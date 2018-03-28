@@ -1,0 +1,1 @@
+Requires requests, BeautifulSoup, and lxml python libraries.
