@@ -28,8 +28,7 @@ def data_gen(url):
     r.raise_for_status()
     soup = BeautifulSoup(r.text, 'lxml')
 
-    game = data.Game()
-    game.get_data(url)
+    game = data.Game(soup)
 
 def main():
     logging.basicConfig(filename=LOG_FILE, level=logging.ERROR,

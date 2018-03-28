@@ -26,8 +26,9 @@ class Game:
         pass
 
     def get_reception(self, soup):
-        # TODO
-        pass
+        table = body.find('div', id='content').find('div', id='bodyContent').find('div', id='mw-content-text').find('div', attrs={'class': 'mw-parser-output'}).find('th', string='Aggregate score').parent.parent
+        score_str = table.find('a', string='Metacritic').parent.next_sibling.next_sibling.sup.previous_sibling
+        # TODO: scan the string for rating
 
     def get_title(self, soup):
         self.title = soup.body.find('div', id='content').find('h1', id='firstHeading').i.string
