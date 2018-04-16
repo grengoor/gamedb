@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import os
 import logging
 
 import requests
@@ -11,16 +10,19 @@ import data
 URL_FILE = 'url.txt'
 LOG_FILE = 'data_gen.log'
 
+
 def get_urls_tmp():
     urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
             'https://en.wikipedia.org/wiki/Dark_Souls_III')
     for url in urls:
         yield url
 
+
 # Return an iterable of urls
 def get_urls(file_):
     # TODO
     return get_urls_tmp()
+
 
 # Raise requests.exceptions.HTTPError if there's a bad request
 def data_gen(url):
@@ -29,6 +31,7 @@ def data_gen(url):
     soup = BeautifulSoup(r.text, 'lxml')
 
     game = data.Game(soup)
+
 
 def main():
     logging.basicConfig(filename=LOG_FILE, level=logging.ERROR,
@@ -45,6 +48,6 @@ def main():
                     logging.error('Exited due to too many errors.')
                     break
 
+
 if __name__ == '__main__':
     main()
-
