@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+from parse import compile
+
 
 def generate_unique_id():
     # TODO
@@ -25,6 +27,8 @@ class Game:
         # TODO
         pass
 
+    reception_parse = compile('{num:d}/{den:d}')
+
     def get_reception(self, soup):
         table = soup.body.find('div', id='content') \
                          .find('div', id='bodyContent') \
@@ -33,7 +37,9 @@ class Game:
                          .find('th', string='Aggregate score').parent.parent
         score_str = table.find('a', string='Metacritic').parent.next_sibling \
                          .next_sibling.sup.previous_sibling
-        # TODO: scan the string for rating
+        parsed_score = Game.reception_parse.search(score_str)
+        self.reception = 100 * float(parsed_score['num']) \
+            / float(parsed_score['den'])
 
     def get_title(self, soup):
         self.title = soup.body.find('div', id='content') \
