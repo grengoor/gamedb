@@ -1,1 +1,6 @@
-Requires requests, BeautifulSoup, and lxml python libraries.
+Dependencies:
+bs4
+lxml
+mysqlclient
+parse
+requests
