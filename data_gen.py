@@ -24,13 +24,17 @@ def get_urls(file_):
     return get_urls_tmp()
 
 
-# Raise requests.exceptions.HTTPError if there's a bad request
-def data_gen(url):
+def data_gen(url: str):
     r = requests.get(url)
     r.raise_for_status()
     soup = BeautifulSoup(r.text, 'lxml')
 
-    game = data.Game(soup)
+    game = data.Game(soup, check_db=True)
+    if game.in_database:
+        return
+    platform = data.Platform(soup)
+    game_releases = data.GameReleases(soup, game)
+    print(game_releases.game_releases)
 
 
 def main():
@@ -49,5 +53,36 @@ def main():
                     break
 
 
+def data_gen_test(url: str):
+    r = requests.get(url)
+    r.raise_for_status()
+    soup = BeautifulSoup(r.text, 'lxml')
+
+    game = data.Game(soup, use_db=False)
+    print('"{title}" {reception} {release_date}'
+          .format(title=game.title, reception=game.reception,
+                  release_date=game.earliest_release_date))
+    platform = data.Platform(soup)
+    game_releases = data.GameReleases(soup, game)
+    print(game_releases.game_releases)
+
+
+def test():
+    logging.basicConfig(filename=LOG_FILE, level=logging.ERROR,
+                        format='%(asctime)s %(message)s')
+    with open(URL_FILE, "r+") as f:
+        errors = 0
+        for url in get_urls(f):
+            try:
+                data_gen_test(url)
+            except requests.exceptions.HTTPError:
+                logging.error('HTML request to {url} failed.'.format(url=url))
+                errors += 1
+                if errors >= 3:
+                    logging.error('Exited due to too many errors.')
+                    break
+
+
 if __name__ == '__main__':
-    main()
+    test()
+    # main()
