@@ -39,7 +39,7 @@ class Game:
                          .next_sibling.sup.previous_sibling
         parsed_score = Game.reception_parse.search(score_str)
         self.reception = 100 * float(parsed_score['num']) \
-            / float(parsed_score['den'])
+                             / float(parsed_score['den'])
 
     def get_title(self, soup):
         self.title = soup.body.find('div', id='content') \
