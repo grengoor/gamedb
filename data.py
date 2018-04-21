@@ -5,7 +5,7 @@ import logging
 from bs4 import BeautifulSoup
 from parse import compile
 
-import config
+from mysql_config import config
 import gamedb
 
 
@@ -83,36 +83,32 @@ class Game:
             self.reception = None
             self.title = None
 
-    check_existence_sql = """SELECT title FROM {table} WHERE title='?'""" \
-                          .format(table=config.config['tables']['Game'])
+    check_existence_sql = "SELECT title FROM game WHERE title='%s'"
 
     def check_database(self):
         """Return database tuple if a tuple with title=self.title is in the
         database, return None otherwise.
 
-        If such a tuple exists in the database, then set self.in_database to
-        True. Else, leave it alone.
+        self.in_database is True if such a tuple exists in the database, False
+        otherwise.
         """
         if not self.title:
             return False
 
-        cu = gamedb.db.cursor()
-        cu.execute(Game.check_existence_sql, (self.title,))
-        tuple = cu.fetchone()
-        cu.close()
+        with gamedb.db.cursor() as cu:
+            cu.execute(Game.check_existence_sql, (self.title,))
+            tuple = cu.fetchone()
 
-        if tuple:
-            self.in_database = True
+        self.in_database = True if tuple else False
         return tuple
 
-    # TODO
-    insert_sql = """INSERT INTO {table} VALUES (TODO)""" \
-                 .format(table=config.config['tables']['Game'])
+    insert_sql = "INSERT INTO game VALUES ('%s', '%s', '%s', '%s')"
 
     def insert_into_database(self):
-        cu = gamedb.db.cursor()
-        cu.execute(Game.insert_sql, ("TODO"))   # TODO
-        cu.close()
+        with gamedb.db.cursor() as cu:
+            cu.execute(Game.insert_sql, (self.game_id,
+                                         self.earliest_release_date,
+                                         self.reception, self.title))
 
     def get_data(self, soup: BeautifulSoup, check_db: bool = False,
                  use_db: bool = True):
@@ -141,9 +137,8 @@ class Game:
             self.get_title(soup)
 
     def get_data_from_tuple(self, tuple):
-        # TODO
-        logging.error('Game.get_data_from_tuple called yet not implemented')
-        pass
+        self.game_id, self.earliest_release_date, self.reception, self.title \
+            = tuple
 
     def get_earliest_release_date(self, soup: BeautifulSoup):
         # TODO

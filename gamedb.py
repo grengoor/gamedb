@@ -2,9 +2,8 @@ import atexit
 
 import pymysql
 
-import config
+from mysql_config import config
 
 
-db = pymysql.connect(**config.config['mysql'])
+db = pymysql.connect(**config['mysql'])
 atexit.register(db.close)
-db = None
