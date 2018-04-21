@@ -2,8 +2,8 @@
 
 import logging
 
-import requests
 from bs4 import BeautifulSoup
+import requests
 
 import data
 
@@ -53,21 +53,24 @@ def main():
                     break
 
 
-def data_gen_test(url: str):
-    r = requests.get(url)
+def data_gen_test(game_url: str):
+    r = requests.get(game_url)
     r.raise_for_status()
-    soup = BeautifulSoup(r.text, 'lxml')
+    game_soup = BeautifulSoup(r.text, 'lxml')
 
-    game = data.Game(soup)
-    game.check_database();
+    game = data.Game(game_soup, use_db=False)
+    game.check_database()
     if not game.in_database:
         game.insert_into_database()
     print('"{title}" {reception} {release_date}'
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
-    #platform = data.Platform(soup)
-    #game_releases = data.GameReleases(soup, game)
-    #print(game_releases.game_releases)
+    for platform_soup in data.get_platform_soups(game_soup):
+        print(platform_soup.prettify().encode('utf-8'))
+        break
+    # platforms = map(data.Platform, platform_soups)
+    # game_releases = data.GameReleases(game_soup, game)
+    # print(game_releases.game_releases)
 
 
 def test1():

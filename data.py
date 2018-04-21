@@ -3,14 +3,34 @@
 import datetime
 import logging
 import random
+import re
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 from parse import compile
+import requests
 
 import gamedb
 
 
 random.seed()
+
+
+wikipedia_baseurl = 'https://en.wikipedia.org/'
+
+
+def wiki_body_content(soup: BeautifulSoup):
+    return soup.body.find('div', id='content').find('div', id='bodyContent')
+
+
+def wiki_infobox(soup: BeautifulSoup):
+    return soup.body.find('div', id='content').find('div', id='bodyContent') \
+                    .find('table', class_='infobox')
+
+
+def wiki_title(soup: BeautifulSoup):
+    return soup.body.find('div', id='content').find('h1', id='firstHeading') \
+               .i.string
 
 
 class PROTOTYPE:
@@ -150,11 +170,10 @@ class Game:
     reception_parse = compile('{num:d}/{den:d}')
 
     def get_reception(self, soup: BeautifulSoup):
-        table = soup.body.find('div', id='content') \
-                         .find('div', id='bodyContent') \
-                         .find('div', id='mw-content-text') \
-                         .find('div', attrs={'class': 'mw-parser-output'}) \
-                         .find('th', string='Aggregate score').parent.parent
+        table = wiki_body_content(soup) \
+                .find('div', id='mw-content-text') \
+                .find('div', class_='mw-parser-output') \
+                .find('th', string='Aggregate score').parent.parent
         score_str = table.find('a', string='Metacritic').parent.next_sibling \
                          .next_sibling.sup.previous_sibling
         parsed_score = Game.reception_parse.search(score_str)
@@ -164,6 +183,7 @@ class Game:
     def get_title(self, soup: BeautifulSoup):
         self.title = soup.body.find('div', id='content') \
                               .find('h1', id='firstHeading').i.string
+        self.title = wiki_title(soup)
         print(self.title)
 
 
@@ -173,6 +193,20 @@ class Platform:
             pass
         else:
             pass
+
+
+platform_re = re.compile(r'Platform(\(s\))?', re.IGNORECASE)
+
+
+def get_platform_soups(game_soup: BeautifulSoup):
+    infobox = wiki_infobox(game_soup)
+    platform_as = infobox.find(string=platform_re).parent.parent.parent.td \
+                         .find_all('a')
+    platform_urls = [urljoin(wikipedia_baseurl, x['href']) for x in platform_as]
+    for url in platform_urls:
+        r = requests.get(url)
+        r.raise_for_status()
+        yield BeautifulSoup(r.text, 'lxml')
 
 
 class GameRelease:
