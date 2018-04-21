@@ -1,17 +1,16 @@
 #!/usr/bin/python3
 
+import datetime
 import logging
+import random
 
 from bs4 import BeautifulSoup
 from parse import compile
 
-from mysql_config import config
 import gamedb
 
 
-def generate_unique_id():
-    # TODO
-    return None
+random.seed()
 
 
 class PROTOTYPE:
@@ -28,7 +27,7 @@ class PROTOTYPE:
                 Ignored if soup is not given or is None.
             use_db: Whether or not to use the database. For debugging.
         """
-        self.prototype_id = generate_unique_id()
+        self.prototype_id = None
         self.in_database = False
         if soup:
             self.get_data(soup, check_db, use_db)
@@ -37,8 +36,7 @@ class PROTOTYPE:
             self.attr2 = None
             # ...
 
-    check_existence_sql = """SELECT title FROM {table} WHERE title='?'""" \
-                          .format(table=config.config['tables']['Game'])
+    check_existence_sql = "SELECT title FROM prototype WHERE title=%s"
 
     def check_database(self):
         """Return database tuple if a tuple with ____ is in the
@@ -74,7 +72,7 @@ class Game:
                 Ignored if soup is not given or is None.
             use_db: Whether or not to use the database. For debugging.
         """
-        self.game_id = generate_unique_id()
+        self.game_id = None
         self.in_database = False
         if soup:
             self.get_data(soup, check_db, use_db)
@@ -83,7 +81,7 @@ class Game:
             self.reception = None
             self.title = None
 
-    check_existence_sql = "SELECT title FROM game WHERE title='%s'"
+    check_existence_sql = "SELECT * FROM game WHERE title=%s"
 
     def check_database(self):
         """Return database tuple if a tuple with title=self.title is in the
@@ -93,22 +91,23 @@ class Game:
         otherwise.
         """
         if not self.title:
-            return False
+            return None
 
         with gamedb.db.cursor() as cu:
             cu.execute(Game.check_existence_sql, (self.title,))
             tuple = cu.fetchone()
 
-        self.in_database = True if tuple else False
+        self.in_database = tuple is not None
         return tuple
 
-    insert_sql = "INSERT INTO game VALUES ('%s', '%s', '%s', '%s')"
+    insert_sql = """INSERT INTO game (earliest_release_date, reception, title)
+                    VALUES (%s, %s, %s)"""
 
     def insert_into_database(self):
         with gamedb.db.cursor() as cu:
-            cu.execute(Game.insert_sql, (self.game_id,
-                                         self.earliest_release_date,
+            cu.execute(Game.insert_sql, (self.earliest_release_date,
                                          self.reception, self.title))
+        gamedb.db.commit()
 
     def get_data(self, soup: BeautifulSoup, check_db: bool = False,
                  use_db: bool = True):
@@ -142,8 +141,10 @@ class Game:
 
     def get_earliest_release_date(self, soup: BeautifulSoup):
         # TODO
-        self.earliest_release_date = None
-        logging.error('Game.get_earliest_release_date called yet not implemented')
+        year = random.randint(2000, 2017)
+        month = random.randint(1, 12)
+        day = random.randint(1, 27)
+        self.earliest_release_date = datetime.date(year, month, day)
         pass
 
     reception_parse = compile('{num:d}/{den:d}')
@@ -177,9 +178,8 @@ class Platform:
 class GameRelease:
     def __init__(self, soup: BeautifulSoup = None, game: Game = None,
                  platform: Platform = None):
-        self.release_id = generate_unique_id()
-        if platform:
-            self.platform_id = platform.platform_id
+        self.release_id = None
+        self.platform_id = platform.platform_id if platform else None
         self.region = None
         self.release_date = None
         if game:
@@ -193,6 +193,7 @@ class GameReleases:
     def __init__(self, soup=None, game=None):
         if game:
             self.game_id = game.game_id
+        self.game_id = game.game_id if game else None
         self.game_releases = []
         if soup:
             self.get_data(soup)

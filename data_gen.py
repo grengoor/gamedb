@@ -58,16 +58,26 @@ def data_gen_test(url: str):
     r.raise_for_status()
     soup = BeautifulSoup(r.text, 'lxml')
 
-    game = data.Game(soup, use_db=False)
+    game = data.Game(soup)
+    game.check_database();
+    if not game.in_database:
+        game.insert_into_database()
     print('"{title}" {reception} {release_date}'
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
-    platform = data.Platform(soup)
-    game_releases = data.GameReleases(soup, game)
-    print(game_releases.game_releases)
+    #platform = data.Platform(soup)
+    #game_releases = data.GameReleases(soup, game)
+    #print(game_releases.game_releases)
 
 
-def test():
+def test1():
+    g = data.Game()
+    g.title = 'Bad Game'
+    t = g.check_database()
+    print(t)
+
+
+def test2():
     logging.basicConfig(filename=LOG_FILE, level=logging.ERROR,
                         format='%(asctime)s %(message)s')
     with open(URL_FILE, "r+") as f:
@@ -84,5 +94,5 @@ def test():
 
 
 if __name__ == '__main__':
-    test()
+    test2()
     # main()
