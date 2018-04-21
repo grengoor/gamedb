@@ -58,16 +58,20 @@ def data_gen_test(game_url: str):
     r.raise_for_status()
     game_soup = BeautifulSoup(r.text, 'lxml')
 
-    game = data.Game(game_soup, use_db=False)
-    game.check_database()
+    game = data.Game(game_soup)
     if not game.in_database:
         game.insert_into_database()
     print('"{title}" {reception} {release_date}'
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
-    for platform_soup in data.get_platform_soups(game_soup):
-        print(platform_soup.prettify().encode('utf-8'))
-        break
+
+    # game_releases = data.get_game_release_;
+
+    return
+
+    platform_soups = data.get_platform_soups(game_soup)
+    for platform_soup in platform_soups:
+        pass
     # platforms = map(data.Platform, platform_soups)
     # game_releases = data.GameReleases(game_soup, game)
     # print(game_releases.game_releases)
