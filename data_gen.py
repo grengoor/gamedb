@@ -65,7 +65,7 @@ def data_gen_test(game_url: str):
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
 
-    # game_releases = data.get_game_release_;
+    game_release = data.GameRelease(game_soup, game=game)
 
     return
 
