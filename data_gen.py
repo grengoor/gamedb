@@ -12,8 +12,9 @@ LOG_FILE = 'data_gen.log'
 
 
 def get_urls_tmp():
-    urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
-            'https://en.wikipedia.org/wiki/Dark_Souls_III')
+    # urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
+    #        'https://en.wikipedia.org/wiki/Dark_Souls_III')
+    urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',)
     for url in urls:
         yield url
 
@@ -66,6 +67,7 @@ def data_gen_test(game_url: str):
                   release_date=game.earliest_release_date))
 
     game_release = data.GameRelease(game_soup, game=game)
+    game_release.insert_into_database()
 
     return
 

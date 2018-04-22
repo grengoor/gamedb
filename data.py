@@ -436,8 +436,8 @@ class GameRelease:
             try:
                 with gamedb.db.cursor() as cu:
                     cu.execute(GameRelease.insert_sql,
-                               (self.game.game_id, release[1], release[2],
-                                release[3], self.title))
+                               (self.game.game_id, release[1].platform_id,
+                                release[2], release[3], self.title))
                 gamedb.db.commit()
             except pymysql.err.InternalError:
                 logging.error(
@@ -457,6 +457,7 @@ class GameRelease:
         """
         self.game = game
         self.title = game.title
+        self.releases = []
         if use_db:
             if not self.title:
                 self.get_title(soup)
@@ -493,6 +494,10 @@ class GameRelease:
                     platform_soup = get_platform_soup(soup, platform.name)
                     platform.get_data(platform_soup, use_db=False)
                     platform.insert_into_database()
+                    # Make sure platform has platform_id
+                    tuple_ = platform.check_database()
+                    if tuple_:
+                        platform.get_data_from_tuple(tuple_)
                 print(child.string)
             elif platform and child.name == 'div' \
                           and 'plainlist' in child['class']:
