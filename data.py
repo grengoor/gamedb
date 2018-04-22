@@ -498,7 +498,6 @@ class GameRelease:
                     tuple_ = platform.check_database()
                     if tuple_:
                         platform.get_data_from_tuple(tuple_)
-                print(child.string)
             elif platform and child.name == 'div' \
                           and 'plainlist' in child['class']:
                 for li in child.find_all('li'):
