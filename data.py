@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import datetime
+from dateutil.parser import parse
 import logging
 import random
 import re
@@ -478,37 +479,28 @@ class GameRelease:
             self.releases.append((release_id, platform, region, release_date))
 
     def get_releases(self, soup: BeautifulSoup):
-        # TEST
-        url = 'https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney'
-        r = requests.get(url)
-        r.raise_for_status()
-
-        soup = BeautifulSoup(r.text, 'lxml')
-        # /TEST
-
         infobox = wiki_infobox(soup)
         release_li = infobox.find('th', string='Release').parent.td.ul.li
-        current_platform = None
+        platform = None
         for child in release_li.children:
             if child.name == 'b':
-                current_platform = Platform()
-                current_platform.name = child.string
-                tuple_ = current_platform.check_database()
+                platform = Platform()
+                platform.name = child.string
+                tuple_ = platform.check_database()
                 if tuple_:
-                    current_platform.get_data_from_tuple(tuple_)
+                    platform.get_data_from_tuple(tuple_)
                 else:
-                    platform_soup = get_platform_soup(soup,
-                                                      current_platform.name)
-                    current_platform.get_data(platform_soup, use_db=False)
-                    current_platform.insert_into_database()
+                    platform_soup = get_platform_soup(soup, platform.name)
+                    platform.get_data(platform_soup, use_db=False)
+                    platform.insert_into_database()
                 print(child.string)
-            elif current_platform and child.name == 'div' \
-                                  and 'plainlist' in child['class']:
+            elif platform and child.name == 'div' \
+                          and 'plainlist' in child['class']:
                 for li in child.find_all('li'):
-                    print(li)
-                    pass
-
-        # TODO
+                    region = li.a.string
+                    release_date = parse(li.span.next_sibling).date()
+                    release = (None, platform, region, release_date)
+                    self.releases.append(release)
 
     def get_title(self, soup: BeautifulSoup):
         self.title = wiki_title(soup)
