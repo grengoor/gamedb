@@ -31,7 +31,7 @@ def wiki_infobox(soup: BeautifulSoup):
 
 def wiki_title(soup: BeautifulSoup):
     return soup.body.find('div', id='content').find('h1', id='firstHeading') \
-               .i.string
+               .string
 
 
 def random_date():
@@ -54,7 +54,7 @@ class Prototype:
                 data correspoinding to data in soup exists in the database.
                 If False, then attempt to populate object using getdata.
                 Ignored if soup is not given or is None.
-            use_db: Whether or not to use the database. For debugging.
+            use_db: Whether or not to use the database.
         """
         self.prototype_id = None
         self.in_database = False
@@ -107,7 +107,7 @@ class Prototype:
             check_db: If True, then the object will not be populated if data
                 correspoinding to data in soup exists in the database.
                 If False, then attempt to populate object.
-            use_db: Whether or not to use the database. For debugging.
+            use_db: Whether or not to use the database.
         """
         if use_db:
             self.get_TODO(soup)
@@ -135,6 +135,129 @@ class Prototype:
 '''
 
 
+class Company:
+    def __init__(self, soup: BeautifulSoup = None, check_db: bool = False,
+                 use_db: bool = True):
+        """Initialize Company object.
+
+        Args:
+            soup: If given, then use data in soup to initialize/check for
+                existence in database.
+            check_db: If True, then the object will not be populated if
+                data correspoinding to data in soup exists in the database.
+                If False, then attempt to populate object using getdata.
+                Ignored if soup is not given or is None.
+            use_db: Whether or not to use the database.
+        """
+        self.company_id = None
+        self.in_database = False
+        if soup:
+            self.get_data(soup, check_db, use_db)
+        else:
+            self.defunct_date = None
+            self.founder = None
+            self.founding_date = None
+            self.hq_address = None
+            self.name = None
+            self.website = None
+
+    check_sql_id = "SELECT * FROM company WHERE id=%s"
+    check_sql_name = "SELECT * FROM company WHERE name=%s"
+
+    def check_database(self):
+        """Return database tuple if a tuple with title=self.title is in the
+        database, return None otherwise. (SLIGHTLY DIFFERENT, TODO)
+
+        self.in_database is True if such a tuple exists in the database, False
+        otherwise.
+        """
+        if self.company_id:
+            sql = Company.check_sql_id
+            check = self.company_id
+        elif self.name:
+            sql = Company.check_sql_name
+            check = self.name
+        else:
+            self.in_database = False
+            return None
+
+        with gamedb.db.cursor() as cu:
+            cu.execute(sql, (check,))
+            tuple_ = cu.fetchone()
+
+        self.in_database = tuple_ is not None
+        return tuple_
+
+    insert_sql = """INSERT INTO company (defunct_date, founder, founding_date,
+                    hq_address, name, website)
+                    VALUES (%s, %s, %s, %s, %s, %s)"""
+
+    def insert_into_database(self):
+        with gamedb.db.cursor() as cu:
+            cu.execute(Company.insert_sql, (self.defunct_date, self.founder,
+                                            self.founding_date, self.hq_address,
+                                            self.name, self.website))
+        gamedb.db.commit()
+
+    def get_data(self, soup: BeautifulSoup, check_db: bool = False,
+                 use_db: bool = True):
+        """Get data by using BeautifulSoup to extract HTML elements.
+
+        Args:
+            soup: Used to initialize object/check for existence in database.
+            check_db: If True, then the object will not be populated if data
+                correspoinding to data in soup exists in the database.
+                If False, then attempt to populate object.
+            use_db: Whether or not to use the database.
+        """
+        if use_db:
+            self.get_name(soup)
+            tuple_ = self.check_database()
+            if tuple_:
+                if not check_db:
+                    self.get_data_from_tuple(tuple_)
+            else:
+                self.get_defunct_date(soup)
+                self.get_founder(soup)
+                self.get_founding_date(soup)
+                self.get_hq_address(soup)
+                self.get_website(soup)
+        else:
+            self.get_defunct_date(soup)
+            self.get_founder(soup)
+            self.get_founding_date(soup)
+            self.get_hq_address(soup)
+            self.get_name(soup)
+            self.get_website(soup)
+
+    def get_data_from_tuple(self, tuple_):
+        self.company_id, self.defunct_date, self.founder, self.founding_date, \
+                self.hq_address, self.name, self.website = tuple_
+
+    def get_defunct_date(self, soup: BeautifulSoup):
+        # TODO
+        self.defunct_date = random_date()
+
+    def get_founder(self, soup: BeautifulSoup):
+        # TODO
+        pass
+
+    def get_founding_date(self, soup: BeautifulSoup):
+        # TODO
+        self.founding_date = random_date()
+
+    def get_hq_address(self, soup: BeautifulSoup):
+        # TODO
+        pass
+
+    def get_name(self, soup: BeautifulSoup):
+        self.name = wiki_title(soup)
+
+    def get_website(self, soup: BeautifulSoup):
+        # TODO
+        pass
+
+
 class Game:
     def __init__(self, soup: BeautifulSoup = None, check_db: bool = False,
                  use_db: bool = True):
@@ -147,7 +270,7 @@ class Game:
                 data correspoinding to data in soup exists in the database.
                 If False, then attempt to populate object using getdata.
                 Ignored if soup is not given or is None.
-            use_db: Whether or not to use the database. For debugging.
+            use_db: Whether or not to use the database.
         """
         self.game_id = None
         self.in_database = False
@@ -203,7 +326,7 @@ class Game:
             check_db: If True, then the object will not be populated if data
                 correspoinding to data in soup exists in the database.
                 If False, then attempt to populate object.
-            use_db: Whether or not to use the database. For debugging.
+            use_db: Whether or not to use the database.
         """
         if use_db:
             self.get_title(soup)
@@ -262,7 +385,7 @@ class GameRelease:
                 data correspoinding to data in soup exists in the database.
                 If False, then attempt to populate object using getdata.
                 Ignored if soup is not given or is None.
-            use_db: Whether or not to use the database. For debugging.
+            use_db: Whether or not to use the database.
         """
         self.in_database = False
         if soup:
@@ -317,7 +440,7 @@ class GameRelease:
                 gamedb.db.commit()
             except pymysql.err.InternalError:
                 logging.error(
-                    'Attempted to insert NULL in non-NULLable column for {}.'
+                    'GameRelease: Attempted to insert NULL in non-NULLable column for {}.'
                     .format(self.title))
 
     def get_data(self, soup: BeautifulSoup, game: Game = Game(),
@@ -329,7 +452,7 @@ class GameRelease:
             check_db: If True, then the object will not be populated if data
                 correspoinding to data in soup exists in the database.
                 If False, then attempt to populate object.
-            use_db: Whether or not to use the database. For debugging.
+            use_db: Whether or not to use the database.
         """
         self.game = game
         self.title = game.title
@@ -369,11 +492,20 @@ class GameRelease:
         for child in release_li.children:
             if child.name == 'b':
                 current_platform = Platform()
-                current_platform = child.string
+                current_platform.name = child.string
+                tuple_ = current_platform.check_database()
+                if tuple_:
+                    current_platform.get_data_from_tuple(tuple_)
+                else:
+                    platform_soup = get_platform_soup(soup,
+                                                      current_platform.name)
+                    current_platform.get_data(platform_soup, use_db=False)
+                    current_platform.insert_into_database()
                 print(child.string)
             elif current_platform and child.name == 'div' \
                                   and 'plainlist' in child['class']:
                 for li in child.find_all('li'):
+                    print(li)
                     pass
 
         # TODO
@@ -394,14 +526,14 @@ class Platform:
                 data correspoinding to data in soup exists in the database.
                 If False, then attempt to populate object using getdata.
                 Ignored if soup is not given or is None.
-            use_db: Whether or not to use the database. For debugging.
+            use_db: Whether or not to use the database.
         """
         self.platform_id = None
         self.in_database = False
         if soup:
             self.get_data(soup, check_db, use_db)
         else:
-            self.company = None     # TODO?
+            self.company = Company()
             self.discontinued_date = None
             self.generation = None
             self.introductory_price = None
@@ -409,7 +541,7 @@ class Platform:
             self.release_date = None
             self.type = None
 
-    check_existence_sql = "SELECT * FROM platform WHERE TODO=%s"
+    check_sql_name = "SELECT * FROM platform WHERE name=%s"
 
     def check_database(self):
         """Return database tuple if a tuple with title=self.title is in the
@@ -418,22 +550,26 @@ class Platform:
         self.in_database is True if such a tuple exists in the database, False
         otherwise.
         """
-        if not self.TODO:
+        if not self.name:
             return None
 
         with gamedb.db.cursor() as cu:
-            cu.execute(Platform.check_existence_sql, (self.TODO,))
+            cu.execute(Platform.check_sql_name, (self.name,))
             tuple_ = cu.fetchone()
 
         self.in_database = tuple_ is not None
         return tuple_
 
-    insert_sql = """INSERT INTO platform (attr1, ... TODO)
-                    VALUES (%s, ... TODO)"""
+    insert_sql = """INSERT INTO platform (company_id, discontinued_date,
+                    generation, introductory_price, name, release_date, type)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)"""
 
     def insert_into_database(self):
         with gamedb.db.cursor() as cu:
-            cu.execute(Platform.insert_sql, (self.TODO))
+            cu.execute(Platform.insert_sql,
+                       (self.company.company_id, self.discontinued_date,
+                        self.generation, self.introductory_price, self.name,
+                        self.release_date, self.type))
         gamedb.db.commit()
 
     def get_data(self, soup: BeautifulSoup, check_db: bool = False,
@@ -445,34 +581,62 @@ class Platform:
             check_db: If True, then the object will not be populated if data
                 correspoinding to data in soup exists in the database.
                 If False, then attempt to populate object.
-            use_db: Whether or not to use the database. For debugging.
+            use_db: Whether or not to use the database.
+            get_name: Whether or not to
         """
         if use_db:
-            self.get_TODO(soup)
+            self.get_name(soup)
             tuple_ = self.check_database()
             if tuple_:
                 if not check_db:
                     self.get_data_from_tuple(tuple_)
             else:
-                # get rest of attributes
-                pass
+                self.get_company(soup)
+                self.get_discontinued_date(soup)
+                self.get_generation(soup)
+                self.get_introductory_price(soup)
+                self.get_release_date(soup)
+                self.get_type(soup)
         else:
-            # get all attributes
-            pass
+            self.get_company(soup)
+            self.get_discontinued_date(soup)
+            self.get_generation(soup)
+            self.get_introductory_price(soup)
+            self.get_name(soup)
+            self.get_release_date(soup)
+            self.get_type(soup)
 
     def get_data_from_tuple(self, tuple_):
-        # unpack tuple into attributes
+        self.platform_id, self.company.company_id, self.discontinued_date, \
+                self.generation, self.introductory_price, self.name, \
+                self.release_date, self.type = tuple_
+
+    def get_company(self, soup: BeautifulSoup):
+        # TODO
         pass
 
-    def get_date(self, soup: BeautifulSoup):
+    def get_discontinued_date(self, soup: BeautifulSoup):
         # TODO
-        year = random.randint(2000, 2017)
-        month = random.randint(1, 12)
-        day = random.randint(1, 27)
-        self.earliest_release_date = datetime.date(year, month, day)
+        self.discontinued_date = random_date()
 
-    def get_title(self, soup: BeautifulSoup):
-        self.title = wiki_title(soup)
+    def get_generation(self, soup: BeautifulSoup):
+        # TODO
+        pass
+
+    def get_introductory_price(self, soup: BeautifulSoup):
+        # TODO
+        pass
+
+    def get_name(self, soup: BeautifulSoup):
+        self.name = wiki_title(soup)
+
+    def get_release_date(self, soup: BeautifulSoup):
+        # TODO
+        pass
+
+    def get_type(self, soup: BeautifulSoup):
+        # TODO
+        pass
 
 
 platform_re = re.compile(r'Platform(\(s\))?', re.IGNORECASE)
