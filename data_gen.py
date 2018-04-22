@@ -12,9 +12,9 @@ LOG_FILE = 'data_gen.log'
 
 
 def get_urls_tmp():
-    # urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
-    #        'https://en.wikipedia.org/wiki/Dark_Souls_III')
-    urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',)
+    urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
+            'https://en.wikipedia.org/wiki/Dark_Souls_III')
+    # urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',)
     for url in urls:
         yield url
 

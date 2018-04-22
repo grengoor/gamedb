@@ -482,27 +482,45 @@ class GameRelease:
     def get_releases(self, soup: BeautifulSoup):
         infobox = wiki_infobox(soup)
         release_li = infobox.find('th', string='Release').parent.td.ul.li
-        platform = None
-        for child in release_li.children:
-            if child.name == 'b':
-                platform = Platform()
-                platform.name = child.string
-                tuple_ = platform.check_database()
-                if tuple_:
-                    platform.get_data_from_tuple(tuple_)
-                else:
-                    platform_soup = get_platform_soup(soup, platform.name)
-                    platform.get_data(platform_soup, use_db=False)
-                    platform.insert_into_database()
-                    # Make sure platform has platform_id
+        if release_li.div:  # Long list of releases
+            platform = None
+            for child in release_li.children:
+                if child.name == 'b':
+                    platform = Platform()
+                    platform.name = child.string
                     tuple_ = platform.check_database()
                     if tuple_:
                         platform.get_data_from_tuple(tuple_)
-            elif platform and child.name == 'div' \
-                          and 'plainlist' in child['class']:
-                for li in child.find_all('li'):
-                    region = li.a.string
-                    release_date = parse(li.span.next_sibling).date()
+                    else:
+                        platform_soup = get_platform_soup(soup, platform.name)
+                        platform.get_data(platform_soup, use_db=False)
+                        platform.insert_into_database()
+                        # Make sure platform has platform_id
+                        tuple_ = platform.check_database()
+                        if tuple_:
+                            platform.get_data_from_tuple(tuple_)
+                elif platform and child.name == 'div' \
+                              and 'plainlist' in child['class']:
+                    for li in child.find_all('li'):
+                        region = li.span.contents[0].string
+                        release_date = parse(li.span.next_sibling).date()
+                        release = (None, platform, region, release_date)
+                        self.releases.append(release)
+        else:   # Short list of releases
+            platform_soups = get_platform_soups(soup)
+            platforms = list(map(Platform, platform_soups))
+
+            release_ul = release_li.parent
+            for li in release_ul.find_all('li'):
+                region = li.span.contents[0].string
+                release_date = parse(li.span.next_sibling).date()
+                for platform in platforms:
+                    if not platform.in_database:
+                        platform.insert_into_database()
+                        # Make sure platform has platform_id
+                        tuple_ = platform.check_database()
+                        if tuple_:
+                            platform.get_data_from_tuple(tuple_)
                     release = (None, platform, region, release_date)
                     self.releases.append(release)
 
@@ -526,16 +544,15 @@ class Platform:
         """
         self.platform_id = None
         self.in_database = False
+        self.company = Company()
+        self.discontinued_date = None
+        self.generation = None
+        self.introductory_price = None
+        self.name = None
+        self.release_date = None
+        self.type = None
         if soup:
             self.get_data(soup, check_db, use_db)
-        else:
-            self.company = Company()
-            self.discontinued_date = None
-            self.generation = None
-            self.introductory_price = None
-            self.name = None
-            self.release_date = None
-            self.type = None
 
     check_sql_name = "SELECT * FROM platform WHERE name=%s"
 
