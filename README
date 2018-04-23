@@ -1,6 +1,6 @@
 Dependencies:
 bs4
 lxml
-mysqlclient
 parse
+pymysql
 requests
