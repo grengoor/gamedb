@@ -803,7 +803,7 @@ class GameRelease:
         if td_child.name == 'div' and 'plainlist' in td_child['class']:
             # "Short" style list (https://en.wikipedia.org/wiki/Dark_Souls_III)
             platform_soups = get_platform_soups(soup)
-            platforms = list(map(Platform, platform_soups))
+            platforms = [Platform(s) for s in platform_soups]
 
             release_ul = release_td.ul
             for li in release_ul.find_all('li'):
