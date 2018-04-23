@@ -18,9 +18,9 @@ LOG_FILE = 'data_gen.log'
 def get_urls_tmp():
     urls = (
             'https://en.wikipedia.org/wiki/Super_Mario_Bros.',
-            # 'https://en.wikipedia.org/wiki/Super_Mario_World',
-            # 'https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
-            # 'https://en.wikipedia.org/wiki/Dark_Souls_III',
+            'https://en.wikipedia.org/wiki/Super_Mario_World',
+            'https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
+            'https://en.wikipedia.org/wiki/Dark_Souls_III',
             )
     for url in urls:
         yield url

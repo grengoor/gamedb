@@ -43,112 +43,6 @@ def random_date():
     return datetime.date(year, month, day)
 
 
-r'''
-class Prototype:
-    def __init__(self, soup: BeautifulSoup = None, check_db: bool = False,
-                 use_db: bool = True):
-        """Initialize Prototype object.
-
-        Args:
-            soup: If given, then use data in soup to initialize/check for
-                existence in database.
-            check_db: If True, then the object will not be populated if
-                data correspoinding to data in soup exists in the database.
-                If False, then attempt to populate object using getdata.
-                Ignored if soup is not given or is None.
-            use_db: Whether or not to use the database.
-        """
-        self.prototype_id = None
-        self.in_database = False
-        if soup:
-            self.get_data(soup, check_db, use_db)
-        else:
-            self.attrN = None
-
-    check_sql_id = "SELECT * FROM prototype WHERE prototype_id=%s"
-    check_sql_TODO = "SELECT * FROM prototype WHERE TODO=%s"
-
-    def check_database(self):
-        """Return database tuple if a tuple with title=self.title is in the
-        database, return None otherwise. (SLIGHTLY DIFFERENT, TODO)
-
-        self.in_database is True if such a tuple exists in the database, False
-        otherwise.
-        """
-        if self.prototype_id:
-            sql = Prototype.check_sql_id
-            check = self.prototype_id
-        elif self.TODO:
-            sql = Prototype.check_sql_TODO
-            check = self.TODO
-        else:
-            self.in_database = False
-            return None
-
-        with gamedb.db.cursor() as cu:
-            cu.execute(sql, (check,))
-            tuple_ = cu.fetchone()
-
-        self.in_database = tuple_ is not None
-        return tuple_
-
-    insert_sql = """INSERT INTO prototype (attr1, ... TODO)
-                    VALUES (%s, ... TODO)"""
-
-    def insert_into_database(self):
-        with gamedb.db.cursor() as cu:
-            cu.execute(Prototype.insert_sql, (self.TODO))
-        gamedb.db.commit()
-
-    get_id_sql = "SELECT prototype_id FROM prototype WHERE TODO=%s"
-
-    def get_id(self, TODO: str = None):
-        """Get id from database."""
-        with gamedb.db.cursor() as cu:
-            if not TODO:
-                TODO = self.TODO
-            cu.execute(Prototype.get_id_sql, (TODO,))
-            id_ = cu.fetchone()
-            if id_:
-                self.prototype_id = id_[0]
-
-    def get_data(self, soup: BeautifulSoup, check_db: bool = False,
-                 use_db: bool = True):
-        """Get data by using BeautifulSoup to extract HTML elements.
-
-        Args:
-            soup: Used to initialize object/check for existence in database.
-            check_db: If True, then the object will not be populated if data
-                correspoinding to data in soup exists in the database.
-                If False, then attempt to populate object.
-            use_db: Whether or not to use the database.
-        """
-        if use_db:
-            self.get_TODO(soup)
-            tuple_ = self.check_database()
-            if tuple_:
-                if not check_db:
-                    self.get_data_from_tuple(tuple_)
-            else:
-                # get rest of attributes
-                pass
-        else:
-            # get all attributes
-            pass
-
-    def get_data_from_tuple(self, tuple_):
-        # TODO unpack tuple into attributes
-        pass
-
-    def get_date(self, soup: BeautifulSoup):
-        # TODO
-        self.date = random_date()
-
-    def get_title(self, soup: BeautifulSoup):
-        self.title = wiki_title(soup)
-'''
-
-
 class Company:
     DEV = 1
     PUB = 2
@@ -811,7 +705,10 @@ class GameRelease:
                 release_date = parse(li.span.next_sibling).date()
                 for platform in platforms:
                     if not platform.in_database:
-                        platform.insert_into_database()
+                        try:
+                            platform.insert_into_database()
+                        except pymysql.err.IntegrityError:
+                            platform.get_id()
                     release = (None, platform, region, release_date)
                     self.releases.append(release)
         else:
@@ -836,7 +733,10 @@ class GameRelease:
                         platform_soup = get_platform_soup(soup, platform.name)
                         if platform_soup:
                             platform.get_data(platform_soup)
-                            platform.insert_into_database()
+                            try:
+                                platform.insert_into_database()
+                            except pymysql.err.IntegrityError:
+                                platform.get_id()
                         else:
                             platform = None
                 elif platform and child.name == 'div' \
