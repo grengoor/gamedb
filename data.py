@@ -909,9 +909,9 @@ class Platform:
         if self.platform_id:
             sql = Platform.check_sql_id
             check = self.platform_id
-        elif self.platform_name:
+        elif self.name:
             sql = Platform.check_sql_name
-            check = self.platform_name
+            check = self.name
         else:
             self.in_datbase = False
             return None
@@ -1069,3 +1069,41 @@ def get_platform_soups(game_soup: BeautifulSoup):
         r = requests.get(url)
         r.raise_for_status()
         yield BeautifulSoup(r.text, 'lxml')
+
+
+class Develops:
+    insert_sql = "INSERT INTO develops VALUES (%s, %s, %s, %s, %s)"
+
+    @staticmethod
+    def insert_i(cu, release_id, employee_id, role, dcompany_id, pcompany_id):
+        try:
+            cu.execute(Develops.insert_sql, (release_id, employee_id, role,
+                                             dcompany_id, pcompany_id))
+        except pymysql.err.IntegrityError:
+            return
+
+    @staticmethod
+    def insert(game: Game, game_release: GameRelease):
+        def_employee = game.employees[0]
+        def_employee_id = def_employee.employee_ids[0]
+        def_role = def_employee.roles[0]
+        def_dcompany_id = game.developing_companies[0].company_id
+        def_pcompany_id = game.publishing_companies[0].company_id
+
+        with gamedb.db.cursor() as cu:
+            for release in game_release.releases:
+                release_id = release[0]
+                for employee in game.employees:
+                    for employee_id, role in \
+                            zip(employee.employee_ids, employee.roles):
+                        Develops.insert_i(cu, release_id, employee_id, role,
+                                          def_dcompany_id, def_pcompany_id)
+                for dcompany in game.developing_companies:
+                    dcompany_id = dcompany.company_id
+                    Develops.insert_i(cu, release_id, def_employee_id,
+                                      def_role, dcompany_id, def_pcompany_id)
+                for pcompany in game.developing_companies:
+                    pcompany_id = pcompany.company_id
+                    Develops.insert_i(cu, release_id, def_employee_id,
+                                      def_role, def_dcompany_id, pcompany_id)
+        gamedb.db.commit()
