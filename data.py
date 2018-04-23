@@ -2,6 +2,7 @@
 
 import datetime
 from dateutil.parser import parse
+from itertools import chain, repeat
 import logging
 import random
 import re
@@ -284,6 +285,27 @@ class Company:
         pass
 
 
+class Employee:
+    def __init__(self, name: str = None, roles: list = []):
+        self.employee_id = None
+        self.name = name
+        self.roles = roles
+
+    insert_if_not_exist_sql = \
+        """INSERT INTO employee (name, role)
+           SELECT * from (SELECT %s, %s) as tmp
+           WHERE NOT EXISTS (
+               SELECT name, role FROM employee WHERE name=%s and role=%s
+           )"""
+
+    def insert_if_not_exist(self):
+        with gamedb.db.cursor() as cu:
+            args = zip(repeat(self.name), self.roles,
+                       repeat(self.name), self.roles)
+            cu.executemany(Employee.insert_if_not_exist_sql, args)
+        gamedb.db.commit()
+
+
 class Game:
     def __init__(self, soup: BeautifulSoup = None, check_db: bool = False,
                  use_db: bool = True):
@@ -299,6 +321,7 @@ class Game:
             use_db: Whether or not to use the database.
         """
         self.game_id = None
+        self.employees = []
         self.in_database = False
         if soup:
             self.get_data(soup, check_db, use_db)
@@ -378,6 +401,9 @@ class Game:
                 except AttributeError:
                     self.earliest_release_date = random_date()
                     logging.warning('Game.get_e_r_d: soup AttributeError')
+                self.get_employees(soup)
+                for employee in self.employees:
+                    employee.insert_if_not_exist()
                 try:
                     self.get_reception(soup)
                 except AttributeError:
@@ -389,6 +415,14 @@ class Game:
             except AttributeError:
                 self.earliest_release_date = random_date()
                 logging.warning('Game.get_e_r_d: soup AttributeError')
+            try:
+                self.get_employees(soup)
+                for employee in self.employees:
+                    employee.insert_if_not_exist()
+            except AttributeError:
+                self.employees = \
+                    [Employee('Shigeru Watanabe', ['Director', 'Producer'])]
+                logging.warning('game.get_employees: soup AttributeError')
             try:
                 self.get_reception(soup)
             except AttributeError:
@@ -410,6 +444,10 @@ class Game:
         month = random.randint(1, 12)
         day = random.randint(1, 27)
         self.earliest_release_date = datetime.date(year, month, day)
+
+    def get_employees(self, soup: BeautifulSoup):
+        # TODO
+        pass
 
     reception_parse = compile('{num:d}/{den:d}')
 
@@ -639,6 +677,7 @@ class Platform:
         self.generation = None
         self.introductory_price = None
         self.name = None
+        self.manufacturers = []
         self.release_date = None
         self.type = None
         if soup:
@@ -710,6 +749,7 @@ class Platform:
                 self.get_discontinued_date(soup)
                 self.get_generation(soup)
                 self.get_introductory_price(soup)
+                self.get_manufacturers(soup)
                 self.get_release_date(soup)
                 self.get_type(soup)
         else:
@@ -718,6 +758,7 @@ class Platform:
             self.get_generation(soup)
             self.get_introductory_price(soup)
             self.get_name(soup)
+            self.get_manufacturers(soup)
             self.get_release_date(soup)
             self.get_type(soup)
 
@@ -747,6 +788,10 @@ class Platform:
 
     def get_name(self, soup: BeautifulSoup):
         self.name = wiki_title(soup)
+
+    def get_manufacturers(self, soup: BeautifulSoup):
+        # TODO
+        pass
 
     def get_release_date(self, soup: BeautifulSoup):
         # TODO
