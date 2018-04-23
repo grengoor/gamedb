@@ -370,6 +370,22 @@ class Company:
                         .format(name))
         return urls
 
+    @staticmethod
+    def generic():
+        return generic_company
+
+
+generic_company = Company()
+generic_company.defunct_date = None
+generic_company.founder = 'Fusajiro Yamauchi'
+generic_company.founding_date = datetime.date(1889, 9, 23)
+generic_company.hq_address = 'Kyoto, Japan'
+generic_company.name = 'Nintendo'
+generic_company.website = 'http://nintendo.com'
+generic_company.check_database()
+if not generic_company.in_database:
+    generic_company.insert_into_database()
+
 
 class Employee:
     roles = ('Artist', 'Composer', 'Creator', 'Director', 'Producer',
@@ -427,6 +443,14 @@ class Employee:
                 names.append(m.group(0))
 
         return names
+
+    @staticmethod
+    def generic():
+        e = Employee()
+        e.name = 'Shigeru Miyamoto'
+        e.roles = [random.choice(Employee.roles)]
+        e.insert_if_not_exist()
+        return e
 
 
 class Game:
@@ -673,9 +697,6 @@ class GameRelease:
         self.in_database is True if such a tuple exists in the database, False
         otherwise.
         """
-        # if self.release_id:
-        #     sql = GameRelease.check_sql_id
-        #     check = self.release_id
         if self.title:
             sql = GameRelease.check_sql_title
             check = self.title
@@ -826,6 +847,27 @@ class GameRelease:
     def get_title(self, soup: BeautifulSoup):
         self.title = wiki_title(soup)
 
+    @staticmethod
+    def generic_r():
+        p = Platform()
+        p.platform_id = 1
+        p.check_database()
+        if not p.in_database:
+            logging.warning('GameRelease.generic: No Platform with id=1')
+
+        region = 'Santa Monica, California, United States'
+        release_date = random_date()
+
+        r = [(None, p, region, release_date)]
+        return r
+
+    @staticmethod
+    def generic(game: Game):
+        gr = GameRelease(game=game)
+        gr.releases = GameRelease.generic_r()
+        gr.insert_into_datbase()
+        return gr
+
 
 class Platform:
     def __init__(self, soup: BeautifulSoup = None, check_db: bool = False,
@@ -854,6 +896,7 @@ class Platform:
         if soup:
             self.get_data(soup, check_db, use_db)
 
+    check_sql_id = "SELECT * FROM platform WHERE platform_id=%s"
     check_sql_name = "SELECT * FROM platform WHERE name=%s"
 
     def check_database(self):
@@ -863,11 +906,18 @@ class Platform:
         self.in_database is True if such a tuple exists in the database, False
         otherwise.
         """
-        if not self.name:
+        if self.platform_id:
+            sql = Platform.check_sql_id
+            check = self.platform_id
+        elif self.platform_name:
+            sql = Platform.check_sql_name
+            check = self.platform_name
+        else:
+            self.in_datbase = False
             return None
 
         with gamedb.db.cursor() as cu:
-            cu.execute(Platform.check_sql_name, (self.name,))
+            cu.execute(sql, (check,))
             tuple_ = cu.fetchone()
 
         self.in_database = tuple_ is not None

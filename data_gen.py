@@ -100,9 +100,8 @@ def data_gen_test(game_url: str):
         return
     if game_release.releases:
         game_release.insert_into_database()
-        game_release.get_ids()
     else:
-        game_release.releases.append(data.GameRelease.generic())
+        game_release.releases.append(data.GameRelease.generic_r(game))
 
     data.Develops.insert(game, game_release)
 
