@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import logging
+import sys
 
 from bs4 import BeautifulSoup
 import requests
@@ -12,9 +13,12 @@ LOG_FILE = 'data_gen.log'
 
 
 def get_urls_tmp():
-    urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
-            'https://en.wikipedia.org/wiki/Dark_Souls_III')
-    # urls = ('https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',)
+    urls = (
+            'https://en.wikipedia.org/wiki/Super_Mario_Bros.',
+            'https://en.wikipedia.org/wiki/Super_Mario_World',
+            'https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
+            'https://en.wikipedia.org/wiki/Dark_Souls_III',
+            )
     for url in urls:
         yield url
 
@@ -67,27 +71,19 @@ def data_gen_test(game_url: str):
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
 
-    game_release = data.GameRelease(game_soup, game=game)
-    game_release.insert_into_database()
-    game_release.get_ids()
-    for release in game_release.releases:
-        print(release)
-
-    return
-
-    platform_soups = data.get_platform_soups(game_soup)
-    for platform_soup in platform_soups:
-        pass
-    # platforms = map(data.Platform, platform_soups)
-    # game_releases = data.GameReleases(game_soup, game)
-    # print(game_releases.game_releases)
-
-
-def test1():
-    g = data.Game()
-    g.title = 'Bad Game'
-    t = g.check_database()
-    print(t)
+    try:
+        game_release = data.GameRelease(game_soup, game=game)
+    except BaseException:
+        logging.error('data_gen_test: {}: Failed to get GameReleases'
+                      .format(game.title))
+        return
+    if game_release.releases:
+        game_release.insert_into_database()
+        game_release.get_ids()
+        for release in game_release.releases:
+            print(release)
+    else:
+        print('No releases were found', file=sys.stderr)
 
 
 def test2():
@@ -101,8 +97,8 @@ def test2():
             except requests.exceptions.HTTPError:
                 logging.error('HTML request to {url} failed.'.format(url=url))
                 errors += 1
-                if errors >= 3:
-                    logging.error('Exited due to too many errors.')
+                if errors >= 20:
+                    logging.error('Exited due to too many HTTP errors.')
                     break
 
 

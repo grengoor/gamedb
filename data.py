@@ -7,6 +7,7 @@ import random
 import re
 from urllib.parse import urljoin
 
+import bs4
 from bs4 import BeautifulSoup
 from parse import compile
 import pymysql
@@ -372,12 +373,32 @@ class Game:
                 if not check_db:
                     self.get_data_from_tuple(tuple_)
             else:
-                self.get_earliest_release_date(soup)
-                self.get_reception(soup)
+                try:
+                    self.get_earliest_release_date(soup)
+                except AttributeError:
+                    self.earliest_release_date = random_date()
+                    logging.warning('Game.get_e_r_d: soup AttributeError')
+                try:
+                    self.get_reception(soup)
+                except AttributeError:
+                    self.reception = float(random.randint(70, 80))
+                    logging.warning('Game.get_reception: soup AttributeError')
         else:
-            self.get_earliest_release_date(soup)
-            self.get_reception(soup)
-            self.get_title(soup)
+            try:
+                self.get_earliest_release_date(soup)
+            except AttributeError:
+                self.earliest_release_date = random_date()
+                logging.warning('Game.get_e_r_d: soup AttributeError')
+            try:
+                self.get_reception(soup)
+            except AttributeError:
+                self.reception = float(random.randint(70, 80))
+                logging.warning('Game.get_reception: soup AttributeError')
+            try:
+                self.get_title(soup)
+            except AttributeError:
+                self.title = 'Game Title'
+                logging.warning('Game.get_title: soup AttributeError')
 
     def get_data_from_tuple(self, tuple_):
         self.game_id, self.earliest_release_date, self.reception, self.title \
@@ -542,13 +563,41 @@ class GameRelease:
 
     def get_releases(self, soup: BeautifulSoup):
         infobox = wiki_infobox(soup)
-        release_li = infobox.find('th', string='Release').parent.td.ul.li
-        if release_li.div:  # Long list of releases
+        release_td = infobox.find('th', string='Release').next_sibling \
+                                                         .next_sibling
+        for td_child in release_td.children:
+            if type(td_child) == bs4.element.Tag:
+                break
+        if td_child.name == 'div' and 'plainlist' in td_child['class']:
+            # "Short" style list (https://en.wikipedia.org/wiki/Dark_Souls_III)
+            platform_soups = get_platform_soups(soup)
+            platforms = map(Platform, platform_soups)
+
+            release_ul = release_td.ul
+            for li in release_ul.find_all('li'):
+                region = li.span.contents[0].string
+                release_date = parse(li.span.next_sibling).date()
+                for platform in platforms:
+                    if not platform.in_database:
+                        platform.insert_into_database()
+                        platform.get_id()
+                    release = (None, platform, region, release_date)
+                    self.releases.append(release)
+        else:
+            # "Long" style list
+            if td_child.name == 'div' and 'NavFrame' in td_child['class']:
+                # (https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney)
+                release_li = release_td.li
+            elif td_child.name == 'b':
+                # (https://en.wikipedia.org/wiki/Super_Mario_World)
+                # Because of this, the name release_li is misleading
+                release_li = release_td
+
             platform = None
             for child in release_li.children:
                 if child.name == 'b':
                     platform = Platform()
-                    platform.name = child.string
+                    platform.name = Platform.name_resolve(child.string)
                     tuple_ = platform.check_database()
                     if tuple_:
                         platform.get_data_from_tuple(tuple_)
@@ -564,20 +613,6 @@ class GameRelease:
                         release_date = parse(li.span.next_sibling).date()
                         release = (None, platform, region, release_date)
                         self.releases.append(release)
-        else:   # Short list of releases
-            platform_soups = get_platform_soups(soup)
-            platforms = map(Platform, platform_soups)
-
-            release_ul = release_li.parent
-            for li in release_ul.find_all('li'):
-                region = li.span.contents[0].string
-                release_date = parse(li.span.next_sibling).date()
-                for platform in platforms:
-                    if not platform.in_database:
-                        platform.insert_into_database()
-                        platform.get_id()
-                    release = (None, platform, region, release_date)
-                    self.releases.append(release)
 
     def get_title(self, soup: BeautifulSoup):
         self.title = wiki_title(soup)
@@ -721,6 +756,13 @@ class Platform:
         # TODO
         pass
 
+    @staticmethod
+    def name_resolve(name):
+        if name == 'SNES':
+            return 'Super Nintendo Entertainment System'
+        else:
+            return name
+
 
 platform_re = re.compile(r'Platform(\(s\))?', re.IGNORECASE)
 
@@ -746,32 +788,3 @@ def get_platform_soups(game_soup: BeautifulSoup):
         r = requests.get(url)
         r.raise_for_status()
         yield BeautifulSoup(r.text, 'lxml')
-
-
-"""
-class GameRelease:
-    def __init__(self, soup: BeautifulSoup = None, game: Game = None,
-                 platform: Platform = None):
-        self.release_id = None
-        self.platform_id = platform.platform_id if platform else None
-        self.region = None
-        self.release_date = None
-        if game:
-            self.title = game.title
-
-
-# GameReleases for a particular Game. Should be used instead of GameRelease
-# since definition of one GameRelease depends on knowing what information has
-# already been used for another GameRelease.
-class GameReleases:
-    def __init__(self, soup=None, game=None):
-        if game:
-            self.game_id = game.game_id
-        self.game_id = game.game_id if game else None
-        self.game_releases = []
-        if soup:
-            self.get_data(soup)
-
-    def get_data(self, soup):
-        pass
-"""
