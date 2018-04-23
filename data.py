@@ -2,7 +2,7 @@
 
 import datetime
 from dateutil.parser import parse
-from itertools import chain, repeat
+from itertools import repeat
 import logging
 import random
 import re
@@ -18,7 +18,6 @@ import gamedb
 
 
 random.seed()
-
 
 wikipedia_baseurl = 'https://en.wikipedia.org/'
 
@@ -286,6 +285,13 @@ class Company:
 
 
 class Employee:
+    roles = ('Artist', 'Composer', 'Creator', 'Director', 'Producer',
+             'Programmer', 'Writer')
+    role_res = [re.compile(r'{role}(\(s\))?'.format(role=role), re.IGNORECASE)
+                for role in roles]
+
+    name_re = re.compile('[a-zA-Z][a-zA-Z ,.\'-]*[a-zA-Z]')
+
     def __init__(self, name: str = None, roles: list = []):
         self.employee_id = None
         self.name = name
@@ -304,6 +310,26 @@ class Employee:
                        repeat(self.name), self.roles)
             cu.executemany(Employee.insert_if_not_exist_sql, args)
         gamedb.db.commit()
+
+    @staticmethod
+    def get_names(infobox: bs4.element.Tag, role_re):
+        th = infobox.find(string=role_re)
+        if not th:
+            return None
+        while th.name != 'th':
+            th = th.parent
+
+        td = th.next_sibling
+        while td.name != 'td':
+            td = td.next_sibling
+
+        names = []
+        for name in td.strings:
+            m = Employee.name_re.search(name)
+            if m:
+                names.append(m.group(0))
+
+        return names
 
 
 class Game:
@@ -402,8 +428,6 @@ class Game:
                     self.earliest_release_date = random_date()
                     logging.warning('Game.get_e_r_d: soup AttributeError')
                 self.get_employees(soup)
-                for employee in self.employees:
-                    employee.insert_if_not_exist()
                 try:
                     self.get_reception(soup)
                 except AttributeError:
@@ -417,8 +441,6 @@ class Game:
                 logging.warning('Game.get_e_r_d: soup AttributeError')
             try:
                 self.get_employees(soup)
-                for employee in self.employees:
-                    employee.insert_if_not_exist()
             except AttributeError:
                 self.employees = \
                     [Employee('Shigeru Watanabe', ['Director', 'Producer'])]
@@ -446,8 +468,13 @@ class Game:
         self.earliest_release_date = datetime.date(year, month, day)
 
     def get_employees(self, soup: BeautifulSoup):
-        # TODO
-        pass
+        infobox = wiki_infobox(soup)
+        for role, role_re in zip(Employee.roles, Employee.role_res):
+            names = Employee.get_names(infobox, role_re)
+            if not names:
+                continue
+            new_employees = [Employee(name, [role]) for name in names]
+            self.employees.extend(new_employees)
 
     reception_parse = compile('{num:d}/{den:d}')
 

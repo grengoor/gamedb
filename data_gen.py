@@ -37,7 +37,6 @@ def data_gen(url: str):
     game = data.Game(soup, check_db=True)
     if game.in_database:
         return
-    platform = data.Platform(soup)
     game_releases = data.GameReleases(soup, game)
     print(game_releases.game_releases)
 
@@ -58,7 +57,18 @@ def main():
                     break
 
 
+def get_employees_test():
+    g = data.Game()
+    g.get_employees(None)
+    for employee in g.employees:
+        print('{} {}'.format(employee.name, employee.roles))
+
+
 def data_gen_test(game_url: str):
+    # TODO remove
+    # get_employees_test()
+    # return
+
     r = requests.get(game_url)
     r.raise_for_status()
     game_soup = BeautifulSoup(r.text, 'lxml')
@@ -67,6 +77,8 @@ def data_gen_test(game_url: str):
     if not game.in_database:
         game.insert_into_database()
         game.get_id()
+        for employee in game.employees:
+            employee.insert_if_not_exist()
     print('"{title}" {reception} {release_date}'
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
