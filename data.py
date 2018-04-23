@@ -427,7 +427,12 @@ class Game:
                 except AttributeError:
                     self.earliest_release_date = random_date()
                     logging.warning('Game.get_e_r_d: soup AttributeError')
-                self.get_employees(soup)
+                try:
+                    self.get_employees(soup)
+                except AttributeError:
+                    self.employees = [Employee('Shigeru Watanabe',
+                                               ['Director', 'Producer'])]
+                    logging.warning('game.get_employees: soup AttributeError')
                 try:
                     self.get_reception(soup)
                 except AttributeError:
