@@ -803,7 +803,7 @@ class GameRelease:
         if td_child.name == 'div' and 'plainlist' in td_child['class']:
             # "Short" style list (https://en.wikipedia.org/wiki/Dark_Souls_III)
             platform_soups = get_platform_soups(soup)
-            platforms = map(Platform, platform_soups)
+            platforms = list(map(Platform, platform_soups))
 
             release_ul = release_td.ul
             for li in release_ul.find_all('li'):
@@ -834,8 +834,11 @@ class GameRelease:
                         platform.get_data_from_tuple(tuple_)
                     else:
                         platform_soup = get_platform_soup(soup, platform.name)
-                        platform.get_data(platform_soup, use_db=False)
-                        platform.insert_into_database()
+                        if platform_soup:
+                            platform.get_data(platform_soup)
+                            platform.insert_into_database()
+                        else:
+                            platform = None
                 elif platform and child.name == 'div' \
                               and 'plainlist' in child['class']:
                     for li in child.find_all('li'):
@@ -995,8 +998,9 @@ class Platform:
 
     def get_company(self, soup: BeautifulSoup):
         # TODO
-        infobox = wiki_infobox(soup)
-        a = infobox.find('th', string=Platform.company_re)
+        # infobox = wiki_infobox(soup)
+        # a = infobox.find('th', string=Platform.company_re)
+        pass
 
     def get_discontinued_date(self, soup: BeautifulSoup):
         # TODO
@@ -1052,6 +1056,7 @@ def get_platform_soup(game_soup: BeautifulSoup, platform_name: str):
         if not a:
             logging.error('get_platform_soup: Could not find a with {}'
                           .format(platform_name))
+            return None
     platform_url = urljoin(wikipedia_baseurl, a['href'])
 
     r = requests.get(platform_url)

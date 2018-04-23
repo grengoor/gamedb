@@ -1,12 +1,15 @@
 #!/usr/bin/python3
 
 import logging
-import sys
 
 from bs4 import BeautifulSoup
 import requests
 
 import data
+
+DEBUGGING = True
+if 'DEBUGGING' not in globals():
+    DEBUGGING = False
 
 URL_FILE = 'url.txt'
 LOG_FILE = 'data_gen.log'
@@ -14,10 +17,10 @@ LOG_FILE = 'data_gen.log'
 
 def get_urls_tmp():
     urls = (
-            'https://en.wikipedia.org/wiki/Super_Mario_World',
-            'https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
-            'https://en.wikipedia.org/wiki/Dark_Souls_III',
             'https://en.wikipedia.org/wiki/Super_Mario_Bros.',
+            # 'https://en.wikipedia.org/wiki/Super_Mario_World',
+            # 'https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
+            # 'https://en.wikipedia.org/wiki/Dark_Souls_III',
             )
     for url in urls:
         yield url
@@ -41,14 +44,20 @@ def data_gen(game_url: str):
             employee.insert_if_not_exist()
         else:
             game.employees.append(data.Employee.generic())
+
         for dcompany in game.developing_companies:
             dcompany.insert_if_not_exist(data.Company.DEV)
         else:
             game.developing_companies.append(data.Company.generic())
+            for dcompany in game.developing_companies:
+                dcompany.insert_if_not_exist(data.Company.DEV)
+
         for pcompany in game.publishing_companies:
             pcompany.insert_if_not_exist(data.Company.PUB)
         else:
             game.publishing_companies.append(data.Company.generic())
+            for pcompany in game.publishing_companies:
+                pcompany.insert_if_not_exist(data.Company.PUB)
     print('"{title}" {reception} {release_date}'
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
@@ -58,6 +67,9 @@ def data_gen(game_url: str):
     except BaseException:
         logging.error('data_gen_test: {}: Failed to get GameReleases'
                       .format(game.title))
+        game_release = data.GameRelease(game=game)
+        if DEBUGGING:
+            raise
     if game_release.releases:
         game_release.insert_into_database()
     else:
