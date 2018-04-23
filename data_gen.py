@@ -14,10 +14,10 @@ LOG_FILE = 'data_gen.log'
 
 def get_urls_tmp():
     urls = (
-            'https://en.wikipedia.org/wiki/Super_Mario_Bros.',
             'https://en.wikipedia.org/wiki/Super_Mario_World',
             'https://en.wikipedia.org/wiki/Phoenix_Wright:_Ace_Attorney',
             'https://en.wikipedia.org/wiki/Dark_Souls_III',
+            # 'https://en.wikipedia.org/wiki/Super_Mario_Bros.',
             )
     for url in urls:
         yield url
@@ -76,9 +76,18 @@ def data_gen_test(game_url: str):
     game = data.Game(game_soup)
     if not game.in_database:
         game.insert_into_database()
-        game.get_id()
         for employee in game.employees:
             employee.insert_if_not_exist()
+        else:
+            game.employees.append(data.Employee.generic())
+        for d_company in game.developing_companies:
+            d_company.insert_if_not_exist(data.Company.DEV)
+        else:
+            game.developing_companies.append(data.Company.generic())
+        for p_company in game.publishing_companies:
+            p_company.insert_if_not_exist(data.Company.PUB)
+        else:
+            game.publishing_companies.append(data.Company.generic())
     print('"{title}" {reception} {release_date}'
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
@@ -92,10 +101,10 @@ def data_gen_test(game_url: str):
     if game_release.releases:
         game_release.insert_into_database()
         game_release.get_ids()
-        for release in game_release.releases:
-            print(release)
     else:
-        print('No releases were found', file=sys.stderr)
+        game_release.releases.append(data.GameRelease.generic())
+
+    data.Develops.insert(game, game_release)
 
 
 def test2():

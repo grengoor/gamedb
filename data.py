@@ -65,7 +65,7 @@ class Prototype:
         else:
             self.attrN = None
 
-    check_sql_id = "SELECT * FROM prototype WHERE id=%s"
+    check_sql_id = "SELECT * FROM prototype WHERE prototype_id=%s"
     check_sql_TODO = "SELECT * FROM prototype WHERE TODO=%s"
 
     def check_database(self):
@@ -150,6 +150,9 @@ class Prototype:
 
 
 class Company:
+    DEV = 1
+    PUB = 2
+
     def __init__(self, soup: BeautifulSoup = None, check_db: bool = False,
                  use_db: bool = True):
         """Initialize Company object.
@@ -164,18 +167,17 @@ class Company:
             use_db: Whether or not to use the database.
         """
         self.company_id = None
+        self.defunct_date = None
+        self.founder = None
+        self.founding_date = None
+        self.hq_address = None
+        self.name = None
+        self.website = None
         self.in_database = False
         if soup:
             self.get_data(soup, check_db, use_db)
-        else:
-            self.defunct_date = None
-            self.founder = None
-            self.founding_date = None
-            self.hq_address = None
-            self.name = None
-            self.website = None
 
-    check_sql_id = "SELECT * FROM company WHERE id=%s"
+    check_sql_id = "SELECT * FROM company WHERE company_id=%s"
     check_sql_name = "SELECT * FROM company WHERE name=%s"
 
     def check_database(self):
@@ -200,6 +202,8 @@ class Company:
             tuple_ = cu.fetchone()
 
         self.in_database = tuple_ is not None
+        if self.in_database and not self.company_id:
+            self.get_id()
         return tuple_
 
     insert_sql = """INSERT INTO company (defunct_date, founder, founding_date,
@@ -212,6 +216,42 @@ class Company:
                                             self.founding_date, self.hq_address,
                                             self.name, self.website))
         gamedb.db.commit()
+        self.get_id()
+
+    dev_sql = "INSERT INTO developing_company (company_id) VALUES (%s)"
+
+    @staticmethod
+    def insert_dev(id):
+        try:
+            with gamedb.db.cursor() as cu:
+                cu.execute(Company.dev_sql, (id,))
+            gamedb.db.commit()
+        except pymysql.err.IntegrityError:
+            return
+
+    pub_sql = "INSERT INTO publishing_company (company_id) VALUES (%s)"
+
+    @staticmethod
+    def insert_pub(id):
+        try:
+            with gamedb.db.cursor() as cu:
+                cu.execute(Company.pub_sql, (id,))
+            gamedb.db.commit()
+        except pymysql.err.IntegrityError:
+            return
+
+    def insert_if_not_exist(self, t: int = None):
+        self.check_database()
+        if not self.in_database:
+            self.insert_into_database()
+        if not self.company_id:
+            self.get_id()
+
+        if t is not None:
+            if t == Company.DEV:
+                Company.insert_dev(self.company_id)
+            elif t == Company.PUB:
+                Company.insert_pub(self.company_id)
 
     get_id_sql = "SELECT company_id FROM company WHERE name=%s"
 
@@ -223,7 +263,7 @@ class Company:
             cu.execute(Company.get_id_sql, (name,))
             id_ = cu.fetchone()
             if id_:
-                self.company_id = id_
+                self.company_id = id_[0]
 
     def get_data(self, soup: BeautifulSoup, check_db: bool = False,
                  use_db: bool = True):
@@ -283,6 +323,53 @@ class Company:
         # TODO
         pass
 
+    developing_re = re.compile(r'Developer(\(s\))?', re.IGNORECASE)
+    publishing_re = re.compile(r'Publisher(\(s\))?', re.IGNORECASE)
+
+    companies = dict()
+
+    invalid_names = ('Japan',)
+
+    @staticmethod
+    def get_urls(infobox: bs4.element.Tag, company_re):
+        th = infobox.find(string=company_re)
+        if not th:
+            return None
+        while th.name != 'th':
+            th = th.parent
+
+        td = th.next_sibling
+        while td.name != 'td':
+            td = td.next_sibling
+
+        urls = []
+        for s in td.strings:
+            if s in ('\n', ':', 'JP'):
+                continue
+            parent = s.parent
+            try:
+                name = parent['title']
+            except KeyError:
+                name = parent.string
+                if not name:
+                    name = s.strip()
+            if name in Company.invalid_names:
+                continue
+
+            if parent.name == 'a':
+                url = urljoin(wikipedia_baseurl, parent['href'])
+                urls.append(url)
+                if name not in Company.companies:
+                    Company.companies[name] = url
+            else:
+                if name in Company.companies:
+                    urls.append(Company.companies[name])
+                else:
+                    logging.error(
+                        'Company.get_urls: url of {} not in Company.companies'
+                        .format(name))
+        return urls
+
 
 class Employee:
     roles = ('Artist', 'Composer', 'Creator', 'Director', 'Producer',
@@ -293,16 +380,16 @@ class Employee:
     name_re = re.compile('[a-zA-Z][a-zA-Z ,.\'-]*[a-zA-Z]')
 
     def __init__(self, name: str = None, roles: list = []):
-        self.employee_id = None
+        self.employee_ids = []
         self.name = name
         self.roles = roles
 
     insert_if_not_exist_sql = \
-        """INSERT INTO employee (name, role)
-           SELECT * from (SELECT %s, %s) as tmp
-           WHERE NOT EXISTS (
-               SELECT name, role FROM employee WHERE name=%s and role=%s
-           )"""
+         """INSERT INTO employee (name, role)
+            SELECT * FROM (SELECT %s, %s) as tmp
+            WHERE NOT EXISTS (
+                SELECT name, role FROM employee WHERE name=%s and role=%s
+            )"""
 
     def insert_if_not_exist(self):
         with gamedb.db.cursor() as cu:
@@ -310,6 +397,16 @@ class Employee:
                        repeat(self.name), self.roles)
             cu.executemany(Employee.insert_if_not_exist_sql, args)
         gamedb.db.commit()
+        self.get_ids()
+
+    get_id_sql = \
+         """SELECT employee_id FROM employee WHERE name=%s AND role=%s"""
+
+    def get_ids(self):
+        with gamedb.db.cursor() as cu:
+            argss = zip(repeat(self.name), self.roles)
+            cu.executemany(Employee.get_id_sql, argss)
+            self.employee_ids = [id_tup[0] for id_tup in cu.fetchall()]
 
     @staticmethod
     def get_names(infobox: bs4.element.Tag, role_re):
@@ -348,6 +445,8 @@ class Game:
         """
         self.game_id = None
         self.employees = []
+        self.developing_companies = []
+        self.publishing_companies = []
         self.in_database = False
         if soup:
             self.get_data(soup, check_db, use_db)
@@ -381,6 +480,8 @@ class Game:
             tuple_ = cu.fetchone()
 
         self.in_database = tuple_ is not None
+        if self.in_database and not self.game_id:
+            self.get_id()
         return tuple_
 
     insert_sql = """INSERT INTO game (earliest_release_date, reception, title)
@@ -391,6 +492,7 @@ class Game:
             cu.execute(Game.insert_sql, (self.earliest_release_date,
                                          self.reception, self.title))
         gamedb.db.commit()
+        self.get_id()
 
     get_id_sql = "SELECT game_id FROM game WHERE title=%s"
 
@@ -432,7 +534,15 @@ class Game:
                 except AttributeError:
                     self.employees = [Employee('Shigeru Watanabe',
                                                ['Director', 'Producer'])]
-                    logging.warning('game.get_employees: soup AttributeError')
+                    logging.warning('Game.get_employees: soup AttributeError')
+                try:
+                    self.get_developing_companies(soup)
+                except AttributeError:
+                    logging.error('Game.get_d_comp: soup AttributeError')
+                try:
+                    self.get_publishing_companies(soup)
+                except AttributeError:
+                    logging.error('Game.get_p_comp: soup AttributeError')
                 try:
                     self.get_reception(soup)
                 except AttributeError:
@@ -449,7 +559,7 @@ class Game:
             except AttributeError:
                 self.employees = \
                     [Employee('Shigeru Watanabe', ['Director', 'Producer'])]
-                logging.warning('game.get_employees: soup AttributeError')
+                logging.warning('Game.get_employees: soup AttributeError')
             try:
                 self.get_reception(soup)
             except AttributeError:
@@ -480,6 +590,34 @@ class Game:
                 continue
             new_employees = [Employee(name, [role]) for name in names]
             self.employees.extend(new_employees)
+
+    def get_developing_companies(self, soup: BeautifulSoup):
+        infobox = wiki_infobox(soup)
+        urls = Company.get_urls(infobox, Company.developing_re)
+
+        for url in urls:
+            r = requests.get(url)
+            try:
+                r.raise_for_status()
+            except requests.exceptions.HTTPError:
+                continue
+            company_soup = BeautifulSoup(r.text, 'lxml')
+
+            self.developing_companies.append(Company(company_soup))
+
+    def get_publishing_companies(self, soup: BeautifulSoup):
+        infobox = wiki_infobox(soup)
+        urls = Company.get_urls(infobox, Company.publishing_re)
+
+        for url in urls:
+            r = requests.get(url)
+            try:
+                r.raise_for_status()
+            except requests.exceptions.HTTPError:
+                continue
+            company_soup = BeautifulSoup(r.text, 'lxml')
+
+            self.publishing_companies.append(Company(company_soup))
 
     reception_parse = compile('{num:d}/{den:d}')
 
@@ -525,7 +663,7 @@ class GameRelease:
             self.releases = []
             self.title = game.title
 
-    check_sql_id = "SELECT * FROM game_release WHERE id=%s"
+    check_sql_id = "SELECT * FROM game_release WHERE release_id=%s"
     check_sql_title = "SELECT * FROM game_release WHERE title=%s"
 
     def check_database(self, check_db: bool = False):
@@ -553,6 +691,8 @@ class GameRelease:
                 tuples = cu.fetchall()
 
         self.in_database = bool(tuples)
+        if self.in_database:
+            self.get_ids()
         return tuples
 
     insert_sql = """INSERT INTO game_release (game_id, platform_id, region,
@@ -570,6 +710,7 @@ class GameRelease:
                 logging.error(
                     'GameRelease: Attempted to insert NULL in non-NULLable column for {}.'
                     .format(self.title))
+        self.get_ids()
 
     get_id_sql = """SELECT release_id FROM game_release
                     WHERE game_id=%s AND platform_id=%s AND region=%s
@@ -650,7 +791,6 @@ class GameRelease:
                 for platform in platforms:
                     if not platform.in_database:
                         platform.insert_into_database()
-                        platform.get_id()
                     release = (None, platform, region, release_date)
                     self.releases.append(release)
         else:
@@ -675,7 +815,6 @@ class GameRelease:
                         platform_soup = get_platform_soup(soup, platform.name)
                         platform.get_data(platform_soup, use_db=False)
                         platform.insert_into_database()
-                        platform.get_id()
                 elif platform and child.name == 'div' \
                               and 'plainlist' in child['class']:
                     for li in child.find_all('li'):
@@ -732,6 +871,8 @@ class Platform:
             tuple_ = cu.fetchone()
 
         self.in_database = tuple_ is not None
+        if self.in_database and not self.platform_id:
+            self.get_id()
         return tuple_
 
     insert_sql = """INSERT INTO platform (company_id, discontinued_date,
@@ -745,6 +886,7 @@ class Platform:
                         self.generation, self.introductory_price, self.name,
                         self.release_date, self.type))
         gamedb.db.commit()
+        self.get_id()
 
     get_id_sql = "SELECT platform_id FROM platform WHERE name=%s"
 
@@ -846,9 +988,21 @@ platform_re = re.compile(r'Platform(\(s\))?', re.IGNORECASE)
 
 def get_platform_soup(game_soup: BeautifulSoup, platform_name: str):
     infobox = wiki_infobox(game_soup)
-    platform_a = infobox.find(string=platform_re).parent.parent.parent.td \
-                        .find('a', string=platform_name)
-    platform_url = urljoin(wikipedia_baseurl, platform_a['href'])
+    th = infobox.find(string=platform_re)
+    while th.name != 'th':
+        th = th.parent
+
+    td = th.next_sibling
+    while td.name != 'td':
+        td = td.next_sibling
+
+    a = td.find('a', title=platform_name)
+    if not a:
+        a = td.find('a', title=re.compile(platform_name, re.IGNORECASE))
+        if not a:
+            logging.error('get_platform_soup: Could not find a with {}'
+                          .format(platform_name))
+    platform_url = urljoin(wikipedia_baseurl, a['href'])
 
     r = requests.get(platform_url)
     r.raise_for_status()
