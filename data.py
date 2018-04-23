@@ -99,6 +99,18 @@ class Prototype:
             cu.execute(Prototype.insert_sql, (self.TODO))
         gamedb.db.commit()
 
+    get_id_sql = "SELECT prototype_id FROM prototype WHERE TODO=%s"
+
+    def get_id(self, TODO: str = None):
+        """Get id from database."""
+        with gamedb.db.cursor() as cu:
+            if not TODO:
+                TODO = self.TODO
+            cu.execute(Prototype.get_id_sql, (TODO,))
+            id_ = cu.fetchone()
+            if id_:
+                self.prototype_id = id_[0]
+
     def get_data(self, soup: BeautifulSoup, check_db: bool = False,
                  use_db: bool = True):
         """Get data by using BeautifulSoup to extract HTML elements.
@@ -199,6 +211,18 @@ class Company:
                                             self.founding_date, self.hq_address,
                                             self.name, self.website))
         gamedb.db.commit()
+
+    get_id_sql = "SELECT company_id FROM company WHERE name=%s"
+
+    def get_id(self, name: str = None):
+        """Get id from database."""
+        with gamedb.db.cursor() as cu:
+            if not name:
+                name = self.name
+            cu.execute(Company.get_id_sql, (name,))
+            id_ = cu.fetchone()
+            if id_:
+                self.company_id = id_
 
     def get_data(self, soup: BeautifulSoup, check_db: bool = False,
                  use_db: bool = True):
@@ -317,6 +341,18 @@ class Game:
             cu.execute(Game.insert_sql, (self.earliest_release_date,
                                          self.reception, self.title))
         gamedb.db.commit()
+
+    get_id_sql = "SELECT game_id FROM game WHERE title=%s"
+
+    def get_id(self, title: str = None):
+        """Get id from database."""
+        with gamedb.db.cursor() as cu:
+            if not title:
+                title = self.title
+            cu.execute(Game.get_id_sql, (title,))
+            id_ = cu.fetchone()
+            if id_:
+                self.game_id = id_[0]
 
     def get_data(self, soup: BeautifulSoup, check_db: bool = False,
                  use_db: bool = True):
@@ -444,6 +480,31 @@ class GameRelease:
                     'GameRelease: Attempted to insert NULL in non-NULLable column for {}.'
                     .format(self.title))
 
+    get_id_sql = """SELECT release_id FROM game_release
+                    WHERE game_id=%s AND platform_id=%s AND region=%s
+                      AND release_date=%s"""
+
+    def get_id(self, index=-1):
+        """Get id from database."""
+        with gamedb.db.cursor() as cu:
+            try:
+                release = self.releases[index]
+            except IndexError:
+                logging.eror('GameRelease.get_id: IndexError for releases')
+
+            cu.execute(GameRelease.get_id_sql,
+                       (self.game.game_id, release[1].platform_id, release[2],
+                        release[3]))
+            id_ = cu.fetchone()
+            if id_:
+                # Result of wanting to treat a tuple as mutable
+                new_release = id_ + self.releases[index][1:]
+                self.releases[index] = new_release
+
+    def get_ids(self):
+        for i in range(len(self.releases)):
+            self.get_id(i)
+
     def get_data(self, soup: BeautifulSoup, game: Game = Game(),
                  check_db: bool = False, use_db: bool = True):
         """Get data by using BeautifulSoup to extract HTML elements.
@@ -495,10 +556,7 @@ class GameRelease:
                         platform_soup = get_platform_soup(soup, platform.name)
                         platform.get_data(platform_soup, use_db=False)
                         platform.insert_into_database()
-                        # Make sure platform has platform_id
-                        tuple_ = platform.check_database()
-                        if tuple_:
-                            platform.get_data_from_tuple(tuple_)
+                        platform.get_id()
                 elif platform and child.name == 'div' \
                               and 'plainlist' in child['class']:
                     for li in child.find_all('li'):
@@ -508,7 +566,7 @@ class GameRelease:
                         self.releases.append(release)
         else:   # Short list of releases
             platform_soups = get_platform_soups(soup)
-            platforms = list(map(Platform, platform_soups))
+            platforms = map(Platform, platform_soups)
 
             release_ul = release_li.parent
             for li in release_ul.find_all('li'):
@@ -517,10 +575,7 @@ class GameRelease:
                 for platform in platforms:
                     if not platform.in_database:
                         platform.insert_into_database()
-                        # Make sure platform has platform_id
-                        tuple_ = platform.check_database()
-                        if tuple_:
-                            platform.get_data_from_tuple(tuple_)
+                        platform.get_id()
                     release = (None, platform, region, release_date)
                     self.releases.append(release)
 
@@ -585,6 +640,18 @@ class Platform:
                         self.release_date, self.type))
         gamedb.db.commit()
 
+    get_id_sql = "SELECT platform_id FROM platform WHERE name=%s"
+
+    def get_id(self, name: str = None):
+        """Get id from database."""
+        with gamedb.db.cursor() as cu:
+            if not name:
+                name = self.name
+            cu.execute(Platform.get_id_sql, (name,))
+            id_ = cu.fetchone()
+            if id_:
+                self.platform_id = id_[0]
+
     def get_data(self, soup: BeautifulSoup, check_db: bool = False,
                  use_db: bool = True):
         """Get data by using BeautifulSoup to extract HTML elements.
@@ -624,9 +691,12 @@ class Platform:
                 self.generation, self.introductory_price, self.name, \
                 self.release_date, self.type = tuple_
 
+    company_re = re.compile('Company', re.IGNORECASE)
+
     def get_company(self, soup: BeautifulSoup):
         # TODO
-        pass
+        infobox = wiki_infobox(soup)
+        a = infobox.find('th', string=Platform.company_re)
 
     def get_discontinued_date(self, soup: BeautifulSoup):
         # TODO

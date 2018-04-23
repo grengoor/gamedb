@@ -62,12 +62,16 @@ def data_gen_test(game_url: str):
     game = data.Game(game_soup)
     if not game.in_database:
         game.insert_into_database()
+        game.get_id()
     print('"{title}" {reception} {release_date}'
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
 
     game_release = data.GameRelease(game_soup, game=game)
     game_release.insert_into_database()
+    game_release.get_ids()
+    for release in game_release.releases:
+        print(release)
 
     return
 
