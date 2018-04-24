@@ -547,7 +547,27 @@ class Game:
 
             self.publishing_companies.append(Company(company_soup))
 
-    reception_parse = compile('{num:d}/{den:d}')
+    reception_parses = (
+        compile('{num:d}/{den:d}'),
+        compile('{score:d}%')
+    )
+    reception_parse_methods = (
+        lambda p: 100 * float(p['num']) / float(p['den']),
+        lambda p: p['score']
+    )
+
+    @staticmethod
+    def parse_reception(score_str):
+        for c, pmethod in zip(Game.reception_parses,
+                              Game.reception_parse_methods):
+            parsed_score = c.search(score_str)
+            if not parsed_score:
+                continue
+            p = pmethod(parsed_score)
+            if p:
+                return p
+        return None
+
     reception_srcs = ('Metacritic', 'GameRankings')
 
     def get_reception(self, soup: BeautifulSoup):
@@ -561,9 +581,9 @@ class Game:
                 break
         score_str = agg_str.parent.next_sibling \
                            .next_sibling.sup.previous_sibling
-        parsed_score = Game.reception_parse.search(score_str)
-        self.reception = 100 * float(parsed_score['num']) \
-                             / float(parsed_score['den'])
+        self.reception = Game.parse_reception(score_str)
+        if not self.reception:
+            raise AttributeError
 
     def get_title(self, soup: BeautifulSoup):
         self.title = wiki_title(soup)
