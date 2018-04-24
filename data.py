@@ -538,14 +538,19 @@ class Game:
             self.publishing_companies.append(Company(company_soup))
 
     reception_parse = compile('{num:d}/{den:d}')
+    reception_srcs = ('Metacritic', 'GameRankings')
 
     def get_reception(self, soup: BeautifulSoup):
         table = wiki_body_content(soup) \
                 .find('div', id='mw-content-text') \
                 .find('div', class_='mw-parser-output') \
                 .find('th', string='Aggregate score').parent.parent
-        score_str = table.find('a', string='Metacritic').parent.next_sibling \
-                         .next_sibling.sup.previous_sibling
+        for src in Game.reception_srcs:
+            agg_str = table.find('a', string=src)
+            if agg_str:
+                break
+        score_str = agg_str.parent.next_sibling \
+                           .next_sibling.sup.previous_sibling
         parsed_score = Game.reception_parse.search(score_str)
         self.reception = 100 * float(parsed_score['num']) \
                              / float(parsed_score['den'])
