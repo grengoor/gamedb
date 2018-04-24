@@ -38,26 +38,9 @@ def data_gen(game_url: str):
     game_soup = BeautifulSoup(r.text, 'lxml')
 
     game = data.Game(game_soup)
+    game.ensure_attr_existence()
     if not game.in_database:
-        game.insert_into_database()
-        for employee in game.employees:
-            employee.insert_if_not_exist()
-        else:
-            game.employees.append(data.Employee.generic())
-
-        for dcompany in game.developing_companies:
-            dcompany.insert_if_not_exist(data.Company.DEV)
-        else:
-            game.developing_companies.append(data.Company.generic())
-            for dcompany in game.developing_companies:
-                dcompany.insert_if_not_exist(data.Company.DEV)
-
-        for pcompany in game.publishing_companies:
-            pcompany.insert_if_not_exist(data.Company.PUB)
-        else:
-            game.publishing_companies.append(data.Company.generic())
-            for pcompany in game.publishing_companies:
-                pcompany.insert_if_not_exist(data.Company.PUB)
+        game.insert_into_database_r()
     print('"{title}" {reception} {release_date}'
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
@@ -68,8 +51,8 @@ def data_gen(game_url: str):
         logging.error('data_gen_test: {}: Failed to get GameReleases'
                       .format(game.title))
         game_release = data.GameRelease(game=game)
-        if DEBUGGING:
-            raise
+        # if DEBUGGING:
+        #     raise
     if game_release.releases:
         game_release.insert_into_database()
     else:

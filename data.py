@@ -412,6 +412,16 @@ class Game:
         gamedb.db.commit()
         self.get_id()
 
+    def insert_into_database_r(self):
+        """Like insert_into_database, but also do it for all attributes."""
+        self.insert_into_database()
+        for employee in self.employees:
+            employee.insert_if_not_exist()
+        for dcompany in self.developing_companies:
+            dcompany.insert_if_not_exist(Company.DEV)
+        for pcompany in self.publishing_companies:
+            pcompany.insert_if_not_exist(Company.PUB)
+
     get_id_sql = "SELECT game_id FROM game WHERE title=%s"
 
     def get_id(self, title: str = None):
@@ -557,6 +567,14 @@ class Game:
 
     def get_title(self, soup: BeautifulSoup):
         self.title = wiki_title(soup)
+
+    def ensure_attr_existence(self):
+        if not self.employees:
+            self.employees.append(Employee.generic())
+        if not self.developing_companies:
+            self.developing_companies.append(Company.generic())
+        if not self.publishing_companies:
+            self.publishing_companies.append(Company.generic())
 
 
 class GameRelease:
