@@ -677,17 +677,13 @@ class GameRelease:
     def get_id(self, index=-1):
         """Get id from database."""
         with gamedb.db.cursor() as cu:
-            try:
-                release = self.releases[index]
-            except IndexError:
-                logging.eror('GameRelease.get_id: IndexError for releases')
+            release = self.releases[index]
 
             cu.execute(GameRelease.get_id_sql,
                        (self.game.game_id, release[1].platform_id, release[2],
                         release[3]))
             id_ = cu.fetchone()
             if id_:
-                # Result of wanting to treat a tuple as mutable
                 new_release = id_ + self.releases[index][1:]
                 self.releases[index] = new_release
 
@@ -717,11 +713,23 @@ class GameRelease:
                 if not check_db:
                     self.get_data_from_tuples(tuples)
             else:
-                self.get_releases(soup)
+                try:
+                    self.get_releases(soup)
+                except BaseException:
+                    if not self.releases:
+                        logging.warning(
+                                'GameRelease.get_data: Failed to get releases')
+                        self.releases.append(GameRelease.generic_r())
         else:
             if not self.title:
                 self.get_title(soup)
-            self.get_releases(soup)
+            try:
+                self.get_releases(soup)
+            except BaseException:
+                if not self.releases:
+                    logging.warning(
+                            'GameRelease.get_data: Failed to get releases')
+                    self.releases.append(GameRelease.generic_r())
 
     def get_data_from_tuples(self, tuples):
         _, self.game.game_id, _, _, _, self.title = tuples[0]
@@ -739,19 +747,19 @@ class GameRelease:
                 break
         if td_child.name == 'div' and 'plainlist' in td_child['class']:
             # "Short" style list (https://en.wikipedia.org/wiki/Dark_Souls_III)
-            platform_soups = get_platform_soups(soup)
-            platforms = [Platform(s) for s in platform_soups]
+            platforms = [Platform(s) for s in get_platform_soups(soup)]
+            for platform in platforms:
+                if not platform.in_database:
+                    try:
+                        platform.insert_into_database()
+                    except pymysql.err.IntegrityError:
+                        platform.get_id()
 
             release_ul = release_td.ul
             for li in release_ul.find_all('li'):
                 region = li.span.contents[0].string
                 release_date = parse(li.span.next_sibling).date()
                 for platform in platforms:
-                    if not platform.in_database:
-                        try:
-                            platform.insert_into_database()
-                        except pymysql.err.IntegrityError:
-                            platform.get_id()
                     release = (None, platform, region, release_date)
                     self.releases.append(release)
         else:
@@ -795,23 +803,24 @@ class GameRelease:
 
     @staticmethod
     def generic_r():
+        """Generic self.releases[i]"""
         p = Platform()
         p.platform_id = 1
         p.check_database()
         if not p.in_database:
             logging.warning('GameRelease.generic: No Platform with id=1')
 
-        region = 'Santa Monica, California, United States'
+        region = 'NA'
         release_date = random_date()
 
-        r = [(None, p, region, release_date)]
+        r = (None, p, region, release_date)
         return r
 
     @staticmethod
     def generic(game: Game):
         gr = GameRelease(game=game)
-        gr.releases = GameRelease.generic_r()
-        gr.insert_into_datbase()
+        gr.releases = [GameRelease.generic_r()]
+        gr.insert_into_database()
         return gr
 
 
@@ -997,7 +1006,7 @@ def get_platform_soup(game_soup: BeautifulSoup, platform_name: str):
     if not a:
         a = td.find('a', title=re.compile(platform_name, re.IGNORECASE))
         if not a:
-            logging.error('get_platform_soup: Could not find a with {}'
+            logging.error('get_platform_soup: Could not find a platform url with {}'
                           .format(platform_name))
             return None
     platform_url = urljoin(wikipedia_baseurl, a['href'])
