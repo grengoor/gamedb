@@ -72,6 +72,8 @@ def main():
         for url in get_urls_tmp():
             try:
                 data_gen(url)
+            except KeyboardInterrupt:
+                break
             except requests.exceptions.HTTPError:
                 logging.error('HTML request to {url} failed.'.format(url=url))
                 errors += 1
