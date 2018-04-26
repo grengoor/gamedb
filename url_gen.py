@@ -1,7 +1,5 @@
 #!/usr/bin/python3
 
-import os
-import random
 from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
@@ -95,7 +93,7 @@ def download_all_urls(file_):
     for i, game_list in enumerate(map(game_list_soup, range(len(list_urls)))):
         for tr in game_list('tr'):
             try:
-                print(tr.td.a['href'], file=file_)
+                print(urljoin(wikipedia_baseurl, tr.td.a['href']), file=file_)
             except BaseException:
                 continue
 
