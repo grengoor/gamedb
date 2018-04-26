@@ -76,7 +76,7 @@ class Company:
 
     def check_database(self):
         """Return database tuple if a tuple with title=self.title is in the
-        database, return None otherwise. (SLIGHTLY DIFFERENT, TODO)
+        database, return None otherwise.
 
         self.in_database is True if such a tuple exists in the database, False
         otherwise.
@@ -378,7 +378,7 @@ class Game:
 
     def check_database(self):
         """Return database tuple if a tuple with title=self.title is in the
-        database, return None otherwise. (SLIGHTLY DIFFERENT, TODO)
+        database, return None otherwise.
 
         self.in_database is True if such a tuple exists in the database, False
         otherwise.
@@ -629,7 +629,7 @@ class GameRelease:
 
     def check_database(self, check_db: bool = False):
         """Return database tuple if a tuple with title=self.title is in the
-        database, return None otherwise. (SLIGHTLY DIFFERENT, TODO)
+        database, return None otherwise.
 
         self.in_database is True if such a tuple exists in the database, False
         otherwise.
