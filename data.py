@@ -365,11 +365,11 @@ class Game:
         self.employees = []
         self.developing_companies = []
         self.publishing_companies = []
+        self.earliest_release_date = None
         self.in_database = False
         if soup:
             self.get_data(soup, check_db, use_db)
         else:
-            self.earliest_release_date = None
             self.reception = None
             self.title = None
 
@@ -453,11 +453,6 @@ class Game:
                     self.get_data_from_tuple(tuple_)
             else:
                 try:
-                    self.get_earliest_release_date(soup)
-                except AttributeError:
-                    self.earliest_release_date = random_date()
-                    logging.warning('Game.get_e_r_d: soup AttributeError')
-                try:
                     self.get_employees(soup)
                 except AttributeError:
                     self.employees = [Employee('Shigeru Watanabe',
@@ -477,11 +472,6 @@ class Game:
                     self.reception = float(random.randint(70, 80))
                     logging.warning('Game.get_reception: soup AttributeError')
         else:
-            try:
-                self.get_earliest_release_date(soup)
-            except AttributeError:
-                self.earliest_release_date = random_date()
-                logging.warning('Game.get_e_r_d: soup AttributeError')
             try:
                 self.get_employees(soup)
             except AttributeError:
@@ -503,12 +493,11 @@ class Game:
         self.game_id, self.earliest_release_date, self.reception, self.title \
             = tuple_
 
-    def get_earliest_release_date(self, soup: BeautifulSoup):
-        # TODO
-        year = random.randint(2000, 2017)
-        month = random.randint(1, 12)
-        day = random.randint(1, 27)
-        self.earliest_release_date = datetime.date(year, month, day)
+    def get_earliest_release_date(self, gr):
+        """Set self.earliest_release_date to the earliest date in the
+        GameRelease gr."""
+        dates = map(lambda x: x[3], gr.releases)
+        self.earliest_release_date = min(dates)
 
     def get_employees(self, soup: BeautifulSoup):
         infobox = wiki_infobox(soup)
