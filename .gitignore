@@ -1,7 +1,6 @@
 *.swp
 *.log
 __pycache__
-url.txt
 TODO
 TODO.*
 .tags1
