@@ -38,10 +38,9 @@ def data_gen(game_url: str):
     game_soup = BeautifulSoup(r.text, 'lxml')
 
     game = data.Game(game_soup)
+    if game.in_database:
+        return
     game.ensure_attr_existence()
-    if not game.in_database:
-        game.insert_into_database_r()
-    print(game_url)
     print('"{title}" {reception} {release_date}'
           .format(title=game.title, reception=game.reception,
                   release_date=game.earliest_release_date))
@@ -52,13 +51,12 @@ def data_gen(game_url: str):
         logging.error('data_gen_test: {}: Failed to get GameReleases'
                       .format(game.title))
         game_release = data.GameRelease(game=game)
-        # if DEBUGGING:
-        #     raise
-    if game_release.releases:
-        game_release.insert_into_database()
-    else:
+    if not game_release.releases:
         game_release.releases.append(data.GameRelease.generic_r())
 
+    game.get_earliest_release_date(game_release)
+    game.insert_into_database_r()
+    game_release.insert_into_database()
     data.Develops.insert(game, game_release)
 
 
@@ -67,10 +65,15 @@ def main():
                         format='%(asctime)s %(message)s')
     with open(URL_FILE, "r+") as f:
         errors = 0
-        # for url in get_urls(f):
+        # for number, url in enumerate(get_urls(f), 1):
         # TODO: replace with proper get_urls function
-        for url in get_urls_tmp():
+        for number, url in enumerate(get_urls_tmp()):
+            if number > 10000:
+                break
+            print(number)
+
             try:
+                print(url)
                 data_gen(url)
             except KeyboardInterrupt:
                 break
