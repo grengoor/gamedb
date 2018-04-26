@@ -95,17 +95,14 @@ def download_all_urls(file_):
     for i, game_list in enumerate(map(game_list_soup, range(len(list_urls)))):
         for tr in game_list('tr'):
             try:
-                print(tr.td.a['href'].encode('utf-8'), file=file_)
+                print(tr.td.a['href'], file=file_)
             except BaseException:
                 continue
 
 
 def main():
-    if not os.path.exists(URL_FILENAME):
-        with open(URL_FILENAME, 'w') as file_:
-            download_all_urls(file_)
-    else:
-        print('File "{}" exists'.format(URL_FILENAME))
+    with open(URL_FILENAME, 'w', encoding='utf-8') as file_:
+        download_all_urls(file_)
 
 
 if __name__ == '__main__':
