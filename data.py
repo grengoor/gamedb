@@ -279,9 +279,21 @@ class Company:
     def get_name(self, soup: BeautifulSoup):
         self.name = wiki_title(soup)
 
+    website_re = re.compile(
+        r'^(?:http|ftp)s?://'
+        r'(?:(?:[A-Z0-9](?:[A-Z0-9-]{0,61}[A-Z0-9])?\.)+(?:[A-Z]{2,6}\.?|[A-Z0-9-]{2,}\.?)|'
+        r'localhost|'
+        r'\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'
+        r'(?::\d+)?'
+        r'(?:/?|[/?]\S+)$', re.IGNORECASE)
+
     def get_website(self, soup: BeautifulSoup):
-        # TODO
-        pass
+        td = wiki_infobox_td(soup, 'Website')
+        if not td:
+            return
+        w = td.a.get('href')
+        if w and Company.website_re.match(w) is not None:
+            self.website = w
 
     developing_re = re.compile(r'Developer(\(s\))?', re.IGNORECASE)
     publishing_re = re.compile(r'Publisher(\(s\))?', re.IGNORECASE)
@@ -353,8 +365,6 @@ class Employee:
     role_res = [re.compile(r'{role}(\(s\))?'.format(role=role), re.IGNORECASE)
                 for role in roles]
 
-    name_re = re.compile('[a-zA-Z][a-zA-Z ,.\'-]*[a-zA-Z]')
-
     def __init__(self, name: str = None, roles: list = []):
         self.employee_ids = []
         self.name = name
@@ -383,6 +393,8 @@ class Employee:
             argss = zip(repeat(self.name), self.roles)
             cu.executemany(Employee.get_id_sql, argss)
             self.employee_ids = [id_tup[0] for id_tup in cu.fetchall()]
+
+    name_re = re.compile(r"[a-zA-Z][a-zA-Z ,.'-]*[a-zA-Z]")
 
     @staticmethod
     def get_names(infobox: bs4.element.Tag, role_re):
@@ -602,8 +614,8 @@ class Game:
             self.publishing_companies.append(Company(company_soup))
 
     reception_parses = (
-        compile('{num:d}/{den:d}'),
-        compile('{score:d}%')
+        compile(r'{num:d}/{den:d}'),
+        compile(r'{score:d}%')
     )
     reception_parse_methods = (
         lambda p: 100 * float(p['num']) / float(p['den']),
@@ -1010,7 +1022,7 @@ class Platform:
                 self.generation, self.introductory_price, self.name, \
                 self.release_date, self.type = tuple_
 
-    company_re = re.compile('Company', re.IGNORECASE)
+    company_re = re.compile(r'Company', re.IGNORECASE)
 
     def get_company(self, soup: BeautifulSoup):
         # TODO
@@ -1018,7 +1030,7 @@ class Platform:
         # a = infobox.find('th', string=Platform.company_re)
         pass
 
-    discontinued_re = compile('Discontinued', re.IGNORECASE)
+    discontinued_re = compile(r'Discontinued', re.IGNORECASE)
 
     def get_discontinued_date(self, soup: BeautifulSoup):
         td = wiki_infobox_td(soup, 'Discontinued')
