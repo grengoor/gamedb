@@ -66,6 +66,27 @@ def random_date():
     return datetime.date(year, month, day)
 
 
+ord_num = (
+    ('first',   1),
+    ('second',  2),
+    ('third',   3),
+    ('fourth',  4),
+    ('fifth',   5),
+    ('sixth',   6),
+    ('seventh', 7),
+    ('eighth',  8),
+    ('ninth',   9),
+)
+
+
+def ord_to_int(o):
+    o_working = o.lower().split()
+    for ord, num in ord_num:
+        if ord in o_working:
+            return num
+    raise TypeError
+
+
 class Company:
     DEV = 1
     PUB = 2
@@ -983,8 +1004,17 @@ class Platform:
             self.discontinued_date = d.date()
 
     def get_generation(self, soup: BeautifulSoup):
-        # TODO
-        pass
+        td = wiki_infobox_td(soup, 'Generation')
+        if not td:
+            return
+        for s in td.stripped_strings:
+            try:
+                g = ord_to_int(s)
+            except TypeError:
+                continue
+            break
+        if g:
+            self.generation = g
 
     def get_introductory_price(self, soup: BeautifulSoup):
         # TODO
