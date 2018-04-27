@@ -4,6 +4,7 @@ import datetime
 from dateutil.parser import parse
 from itertools import repeat
 import logging
+import operator
 import random
 import re
 from urllib.parse import urljoin
@@ -540,7 +541,7 @@ class Game:
     def get_earliest_release_date(self, gr):
         """Set self.earliest_release_date to the earliest date in the
         GameRelease gr."""
-        dates = map(lambda x: x[3], gr.releases)
+        dates = map(operator.itemgetter(3), gr.releases)
         self.earliest_release_date = min(dates)
 
     def get_employees(self, soup: BeautifulSoup):
@@ -1007,13 +1008,14 @@ class Platform:
         td = wiki_infobox_td(soup, 'Generation')
         if not td:
             return
+        g = None
         for s in td.stripped_strings:
             try:
                 g = ord_to_int(s)
             except TypeError:
                 continue
             break
-        if g:
+        if g is not None:
             self.generation = g
 
     def get_introductory_price(self, soup: BeautifulSoup):
@@ -1042,8 +1044,10 @@ class Platform:
             self.release_date = d.date()
 
     def get_type(self, soup: BeautifulSoup):
-        # TODO
-        pass
+        td = wiki_infobox_td(soup, 'Type')
+        if not td:
+            return
+        self.type = next(td.stripped_strings)
 
     @staticmethod
     def name_resolve(name):
