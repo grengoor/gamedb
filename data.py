@@ -284,7 +284,7 @@ class Company:
         if not td:
             return
 
-        self.hq_address = ''.join(td.strings)
+        self.hq_address = ''.join(td.strings).strip()
 
     def get_name(self, soup: BeautifulSoup):
         self.name = wiki_title(soup)
