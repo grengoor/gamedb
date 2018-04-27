@@ -26,7 +26,6 @@ random.seed()
 
 wikipedia_baseurl = 'https://en.wikipedia.org/'
 
-# TODO insert Platform Microsoft Windows
 sql_execute_init = (
 )
 
