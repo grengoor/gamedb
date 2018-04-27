@@ -1033,13 +1033,15 @@ class Platform:
                 self.generation, self.introductory_price, self.name, \
                 self.release_date, self.type = tuple_
 
-    company_re = re.compile(r'Company', re.IGNORECASE)
-
     def get_company(self, soup: BeautifulSoup):
-        # TODO
-        # infobox = wiki_infobox(soup)
-        # a = infobox.find('th', string=Platform.company_re)
-        pass
+        td = wiki_infobox_td(soup, 'Developer')
+        if not td:
+            td = wiki_infobox_td(soup, 'Manufacturer')
+
+        r = requests.get(urljoin(wikipedia_baseurl, td.a.get('href')))
+        r.raise_for_status()
+
+        self.company = Company(BeautifulSoup(r.text, 'lxml'))
 
     discontinued_re = compile(r'Discontinued', re.IGNORECASE)
 
