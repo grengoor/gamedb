@@ -815,6 +815,13 @@ class GameRelease:
             release_id, _, platform.platform_id, region, release_date, _ = t
             self.releases.append((release_id, platform, region, release_date))
 
+    def get_releases2(self, soup: BeautifulSoup):
+        td = wiki_infobox_td(soup, 'Release')
+        platform = None
+        for s in td.stripped_strings:
+            if GameRelease.is_platform_str(s):
+                pass
+
     def get_releases(self, soup: BeautifulSoup):
         infobox = wiki_infobox(soup)
         release_td = infobox.find('th', string='Release').next_sibling \
@@ -977,8 +984,11 @@ class Platform:
                         self.release_date, self.type))
         db.commit()
         self.get_id()
+
         if self.platform_id:
             self.insert_manufacturers()
+        if self.company and not self.company.in_database:
+            self.company.insert_into_database()
 
     get_id_sql = "SELECT platform_id FROM platform WHERE name=%s"
 
