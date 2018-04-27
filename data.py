@@ -1018,9 +1018,28 @@ class Platform:
         if g is not None:
             self.generation = g
 
+    intro_dollar_re = re.compile(r'\$.*')
+
     def get_introductory_price(self, soup: BeautifulSoup):
-        # TODO
-        pass
+        td = wiki_infobox_td(soup, 'Introductory price')
+        if not td:
+            return
+        s = td.find(string=Platform.intro_dollar_re)
+        if 'US' in s and 'Set' not in s:
+            s = s.parent
+            if s.name == 'a':
+                s = s.parent
+                us = False
+                for st in s.stripped_strings:
+                    if us:
+                        filtered = ''.join(
+                                filter(lambda x: x.isdigit() or x == '.', st))
+                        self.introductory_price = float(filtered)
+                        break
+                    if 'US' in st:
+                        us = True
+            # else: TODO?
+            #     pass
 
     def get_name(self, soup: BeautifulSoup):
         self.name = wiki_title(soup)
@@ -1051,7 +1070,9 @@ class Platform:
 
     @staticmethod
     def name_resolve(name):
-        if name == 'SNES':
+        if name == 'NES':
+            return 'Nintendo Entertainment System'
+        elif name == 'SNES':
             return 'Super Nintendo Entertainment System'
         else:
             return name
