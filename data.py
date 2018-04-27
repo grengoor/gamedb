@@ -259,8 +259,18 @@ class Company:
         pass
 
     def get_founding_date(self, soup: BeautifulSoup):
-        # TODO
-        self.founding_date = random_date()
+        td = wiki_infobox_td(soup, 'Founded')
+        if not td:
+            return
+        d = None
+        for s in td.stripped_strings:
+            try:
+                d = dateparse(s)
+            except ValueError:
+                continue
+            break
+        if d:
+            self.founding_date = d.date()
 
     def get_hq_address(self, soup: BeautifulSoup):
         # TODO
