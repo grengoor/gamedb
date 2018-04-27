@@ -254,9 +254,13 @@ class Company:
         if d:
             self.defunct_date = d.date()
 
+    founder_th_re = re.compile(r'Founders?')
+
     def get_founder(self, soup: BeautifulSoup):
-        # TODO
-        pass
+        td = wiki_infobox_td(soup, Company.founder_th_re)
+        if not td:
+            return
+        self.founder = next(td.stripped_strings)
 
     def get_founding_date(self, soup: BeautifulSoup):
         td = wiki_infobox_td(soup, 'Founded')
