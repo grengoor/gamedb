@@ -19,6 +19,7 @@ import requests
 import gamedb
 
 dateparse = parser.parse
+db = gamedb.db
 
 
 random.seed()
@@ -30,10 +31,10 @@ sql_execute_init = (
 )
 
 if sql_execute_init:
-    with gamedb.db.cursor() as cu:
+    with db.cursor() as cu:
         for stmt in sql_execute_init:
             cu.execute(stmt)
-    gamedb.db.commit()
+    db.commit()
 
 
 def wiki_body_content(soup: BeautifulSoup):
@@ -136,7 +137,7 @@ class Company:
             self.in_database = False
             return None
 
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             cu.execute(sql, (check,))
             tuple_ = cu.fetchone()
 
@@ -150,11 +151,11 @@ class Company:
                     VALUES (%s, %s, %s, %s, %s, %s)"""
 
     def insert_into_database(self):
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             cu.execute(Company.insert_sql, (self.defunct_date, self.founder,
                                             self.founding_date, self.hq_address,
                                             self.name, self.website))
-        gamedb.db.commit()
+        db.commit()
         self.get_id()
 
     dev_sql = "INSERT INTO developing_company (company_id) VALUES (%s)"
@@ -162,9 +163,9 @@ class Company:
     @staticmethod
     def insert_dev(id):
         try:
-            with gamedb.db.cursor() as cu:
+            with db.cursor() as cu:
                 cu.execute(Company.dev_sql, (id,))
-            gamedb.db.commit()
+            db.commit()
         except pymysql.err.IntegrityError:
             return
 
@@ -173,9 +174,9 @@ class Company:
     @staticmethod
     def insert_pub(id):
         try:
-            with gamedb.db.cursor() as cu:
+            with db.cursor() as cu:
                 cu.execute(Company.pub_sql, (id,))
-            gamedb.db.commit()
+            db.commit()
         except pymysql.err.IntegrityError:
             return
 
@@ -196,7 +197,7 @@ class Company:
 
     def get_id(self, name: str = None):
         """Get id from database."""
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             if not name:
                 name = self.name
             cu.execute(Company.get_id_sql, (name,))
@@ -347,18 +348,18 @@ class Employee:
             )"""
 
     def insert_if_not_exist(self):
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             args = zip(repeat(self.name), self.roles,
                        repeat(self.name), self.roles)
             cu.executemany(Employee.insert_if_not_exist_sql, args)
-        gamedb.db.commit()
+        db.commit()
         self.get_ids()
 
     get_id_sql = \
          """SELECT employee_id FROM employee WHERE name=%s AND role=%s"""
 
     def get_ids(self):
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             argss = zip(repeat(self.name), self.roles)
             cu.executemany(Employee.get_id_sql, argss)
             self.employee_ids = [id_tup[0] for id_tup in cu.fetchall()]
@@ -438,7 +439,7 @@ class Game:
             self.in_database = False
             return None
 
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             cu.execute(sql, (check,))
             tuple_ = cu.fetchone()
 
@@ -451,10 +452,10 @@ class Game:
                     VALUES (%s, %s, %s)"""
 
     def insert_into_database(self):
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             cu.execute(Game.insert_sql, (self.earliest_release_date,
                                          self.reception, self.title))
-        gamedb.db.commit()
+        db.commit()
         self.get_id()
 
     def insert_into_database_r(self):
@@ -471,7 +472,7 @@ class Game:
 
     def get_id(self, title: str = None):
         """Get id from database."""
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             if not title:
                 title = self.title
             cu.execute(Game.get_id_sql, (title,))
@@ -675,7 +676,7 @@ class GameRelease:
             self.in_database = False
             return None
 
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             cu.execute(sql, (check,))
             if check_db:
                 tuples = [cu.fetchone()]
@@ -693,11 +694,11 @@ class GameRelease:
     def insert_into_database(self):
         for release in self.releases:
             try:
-                with gamedb.db.cursor() as cu:
+                with db.cursor() as cu:
                     cu.execute(GameRelease.insert_sql,
                                (self.game.game_id, release[1].platform_id,
                                 release[2], release[3], self.title))
-                gamedb.db.commit()
+                db.commit()
             except pymysql.err.InternalError:
                 logging.error(
                     'GameRelease: Attempted to insert NULL in non-NULLable column for {}.'
@@ -710,7 +711,7 @@ class GameRelease:
 
     def get_id(self, index=-1):
         """Get id from database."""
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             release = self.releases[index]
 
             cu.execute(GameRelease.get_id_sql,
@@ -905,7 +906,7 @@ class Platform:
             self.in_datbase = False
             return None
 
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             cu.execute(sql, (check,))
             tuple_ = cu.fetchone()
 
@@ -914,24 +915,34 @@ class Platform:
             self.get_id()
         return tuple_
 
+    man_sql = """INSERT INTO manufacturers VALUES (%s, %s)"""
+
+    def insert_manufacturers(self):
+        with db.cursor() as cu:
+            argss = zip(repeat(self.platform_id), self.manufacturers)
+            cu.executemany(Platform.man_sql, argss)
+        db.commit()
+
     insert_sql = """INSERT INTO platform (company_id, discontinued_date,
                     generation, introductory_price, name, release_date, type)
                     VALUES (%s, %s, %s, %s, %s, %s, %s)"""
 
     def insert_into_database(self):
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             cu.execute(Platform.insert_sql,
                        (self.company.company_id, self.discontinued_date,
                         self.generation, self.introductory_price, self.name,
                         self.release_date, self.type))
-        gamedb.db.commit()
+        db.commit()
         self.get_id()
+        if self.platform_id:
+            self.insert_manufacturers()
 
     get_id_sql = "SELECT platform_id FROM platform WHERE name=%s"
 
     def get_id(self, name: str = None):
         """Get id from database."""
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             if not name:
                 name = self.name
             cu.execute(Platform.get_id_sql, (name,))
@@ -1136,7 +1147,7 @@ class Develops:
         def_dcompany_id = game.developing_companies[0].company_id
         def_pcompany_id = game.publishing_companies[0].company_id
 
-        with gamedb.db.cursor() as cu:
+        with db.cursor() as cu:
             for release in game_release.releases:
                 release_id = release[0]
                 for employee in game.employees:
@@ -1152,4 +1163,4 @@ class Develops:
                     pcompany_id = pcompany.company_id
                     Develops.insert_i(cu, release_id, def_employee_id,
                                       def_role, def_dcompany_id, pcompany_id)
-        gamedb.db.commit()
+        db.commit()
