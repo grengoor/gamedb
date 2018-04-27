@@ -10,16 +10,29 @@ from urllib.parse import urljoin
 
 import bs4
 from bs4 import BeautifulSoup
+from dateutil import parser
 from parse import compile
 import pymysql
 import requests
 
 import gamedb
 
+dateparse = parser.parse
+
 
 random.seed()
 
 wikipedia_baseurl = 'https://en.wikipedia.org/'
+
+# TODO insert Platform Microsoft Windows
+sql_execute_init = (
+)
+
+if sql_execute_init:
+    with gamedb.db.cursor() as cu:
+        for stmt in sql_execute_init:
+            cu.execute(stmt)
+    gamedb.db.commit()
 
 
 def wiki_body_content(soup: BeautifulSoup):
@@ -943,9 +956,26 @@ class Platform:
         # a = infobox.find('th', string=Platform.company_re)
         pass
 
+    discontinued_re = compile('Discontinued', re.IGNORECASE)
+
     def get_discontinued_date(self, soup: BeautifulSoup):
         # TODO
-        self.discontinued_date = random_date()
+        th = wiki_infobox(soup).find('th', string='Discontinued')
+        if not th:
+            self.discontinued_date = None
+            return
+        td = th.next_sibling
+        while td.name != 'td':
+            td = td.next_sibling
+        d = None
+        for s in td.stripped_strings:
+            try:
+                d = dateparse(s)
+            except ValueError:
+                continue
+            break
+        if d:
+            self.discontinued_date = d.date()
 
     def get_generation(self, soup: BeautifulSoup):
         # TODO
