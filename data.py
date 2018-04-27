@@ -44,6 +44,16 @@ def wiki_infobox(soup: BeautifulSoup):
                     .find('table', class_='infobox')
 
 
+def wiki_infobox_td(soup: BeautifulSoup, search):
+    th = wiki_infobox(soup).find('th', string=search)
+    if not th:
+        return None
+    td = th.next_sibling
+    while td.name != 'td':
+        td = td.next_sibling
+    return td
+
+
 def wiki_title(soup: BeautifulSoup):
     return soup.body.find('div', id='content').find('h1', id='firstHeading') \
                .string
@@ -959,12 +969,9 @@ class Platform:
     discontinued_re = compile('Discontinued', re.IGNORECASE)
 
     def get_discontinued_date(self, soup: BeautifulSoup):
-        th = wiki_infobox(soup).find('th', string='Discontinued')
-        if not th:
+        td = wiki_infobox_td(soup, 'Discontinued')
+        if not td:
             return
-        td = th.next_sibling
-        while td.name != 'td':
-            td = td.next_sibling
         d = None
         for s in td.stripped_strings:
             try:
@@ -991,12 +998,9 @@ class Platform:
         pass
 
     def get_release_date(self, soup: BeautifulSoup):
-        th = wiki_infobox(soup).find('th', string='Release date')
-        if not th:
+        td = wiki_infobox_td(soup, 'Release date')
+        if not td:
             return
-        td = th.next_sibling
-        while td.name != 'td':
-            td = td.next_sibling
         d = None
         for s in td.stripped_strings:
             try:
