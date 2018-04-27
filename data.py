@@ -1056,8 +1056,12 @@ class Platform:
         self.name = wiki_title(soup)
 
     def get_manufacturers(self, soup: BeautifulSoup):
-        # TODO
-        pass
+        td = wiki_infobox_td(soup, 'Manufacturer')
+        if not td:
+            return
+        for s in td.stripped_strings:
+            if s != ',' and '[' not in s:
+                self.manufacturers.append(s)
 
     def get_release_date(self, soup: BeautifulSoup):
         td = wiki_infobox_td(soup, 'Release date')
