@@ -65,9 +65,7 @@ def main():
                         format='%(asctime)s %(message)s')
     with open(URL_FILE, "r+") as f:
         errors = 0
-        # for number, url in enumerate(get_urls(f), 1):
-        # TODO: replace with proper get_urls function
-        for number, url in enumerate(get_urls_tmp()):
+        for number, url in enumerate(get_urls(f), 1):
             if number > 10000:
                 break
             print(number)
