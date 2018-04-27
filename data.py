@@ -241,8 +241,18 @@ class Company:
                 self.hq_address, self.name, self.website = tuple_
 
     def get_defunct_date(self, soup: BeautifulSoup):
-        # TODO
-        self.defunct_date = random_date()
+        td = wiki_infobox_td(soup, 'Defunct')
+        if not td:
+            return
+        d = None
+        for s in td.stripped_strings:
+            try:
+                d = dateparse(s)
+            except ValueError:
+                continue
+            break
+        if d:
+            self.defunct_date = d.date()
 
     def get_founder(self, soup: BeautifulSoup):
         # TODO
@@ -412,12 +422,11 @@ class Game:
         self.developing_companies = []
         self.publishing_companies = []
         self.earliest_release_date = None
+        self.reception = None
+        self.title = None
         self.in_database = False
         if soup:
             self.get_data(soup, check_db, use_db)
-        else:
-            self.reception = None
-            self.title = None
 
     check_sql_id = "SELECT * FROM game WHERE game_id=%s"
     check_sql_title = "SELECT * FROM game WHERE title=%s"
