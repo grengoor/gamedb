@@ -959,10 +959,8 @@ class Platform:
     discontinued_re = compile('Discontinued', re.IGNORECASE)
 
     def get_discontinued_date(self, soup: BeautifulSoup):
-        # TODO
         th = wiki_infobox(soup).find('th', string='Discontinued')
         if not th:
-            self.discontinued_date = None
             return
         td = th.next_sibling
         while td.name != 'td':
@@ -993,8 +991,21 @@ class Platform:
         pass
 
     def get_release_date(self, soup: BeautifulSoup):
-        # TODO
-        pass
+        th = wiki_infobox(soup).find('th', string='Release date')
+        if not th:
+            return
+        td = th.next_sibling
+        while td.name != 'td':
+            td = td.next_sibling
+        d = None
+        for s in td.stripped_strings:
+            try:
+                d = dateparse(s)
+            except ValueError:
+                continue
+            break
+        if d:
+            self.release_date = d.date()
 
     def get_type(self, soup: BeautifulSoup):
         # TODO
