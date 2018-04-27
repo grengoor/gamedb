@@ -244,6 +244,7 @@ class Company:
         td = wiki_infobox_td(soup, 'Defunct')
         if not td:
             return
+
         d = None
         for s in td.stripped_strings:
             try:
@@ -260,12 +261,14 @@ class Company:
         td = wiki_infobox_td(soup, Company.founder_th_re)
         if not td:
             return
+
         self.founder = next(td.stripped_strings)
 
     def get_founding_date(self, soup: BeautifulSoup):
         td = wiki_infobox_td(soup, 'Founded')
         if not td:
             return
+
         d = None
         for s in td.stripped_strings:
             try:
@@ -277,8 +280,11 @@ class Company:
             self.founding_date = d.date()
 
     def get_hq_address(self, soup: BeautifulSoup):
-        # TODO
-        pass
+        td = wiki_infobox_td(soup, 'Headquarters')
+        if not td:
+            return
+
+        self.hq_address = ''.join(td.strings)
 
     def get_name(self, soup: BeautifulSoup):
         self.name = wiki_title(soup)
@@ -295,6 +301,7 @@ class Company:
         td = wiki_infobox_td(soup, 'Website')
         if not td:
             return
+
         w = td.a.get('href')
         if w and Company.website_re.match(w) is not None:
             self.website = w
@@ -1040,6 +1047,7 @@ class Platform:
         td = wiki_infobox_td(soup, 'Discontinued')
         if not td:
             return
+
         d = None
         for s in td.stripped_strings:
             try:
@@ -1054,6 +1062,7 @@ class Platform:
         td = wiki_infobox_td(soup, 'Generation')
         if not td:
             return
+
         g = None
         for s in td.stripped_strings:
             try:
@@ -1070,6 +1079,7 @@ class Platform:
         td = wiki_infobox_td(soup, 'Introductory price')
         if not td:
             return
+
         s = td.find(string=Platform.intro_dollar_re)
         if 'US' in s and 'Set' not in s:
             s = s.parent
@@ -1094,6 +1104,7 @@ class Platform:
         td = wiki_infobox_td(soup, 'Manufacturer')
         if not td:
             return
+
         for s in td.stripped_strings:
             if s != ',' and '[' not in s:
                 self.manufacturers.append(s)
@@ -1102,6 +1113,7 @@ class Platform:
         td = wiki_infobox_td(soup, 'Release date')
         if not td:
             return
+
         d = None
         for s in td.stripped_strings:
             try:
@@ -1116,6 +1128,7 @@ class Platform:
         td = wiki_infobox_td(soup, 'Type')
         if not td:
             return
+
         self.type = next(td.stripped_strings)
 
     @staticmethod
